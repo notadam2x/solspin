@@ -419,7 +419,7 @@ body {
 
   ._4 {
     padding-top: 0px;
-    padding-bottom: 50px;
+    padding-bottom: 53px;
   }
 }
 
@@ -443,15 +443,15 @@ body {
     padding-bottom: 20px;
   }
   body::after {
-    top: 350px;
+    top: 310px;
     width: 150px;
-    height: 250px;
+    height: 260px;
     left: -24px;
   }
   body::before {
-    top: 350px;
+    top: 310px;
     width: 150px;
-    height: 250px;
+    height: 260px;
     right: -24px;
   }
   ._d {
@@ -506,6 +506,10 @@ body {
   }
   ._4 {
     font-size: 38px;
+        margin-top: -35px;
+        margin-bottom: 25px;
+
+
   }
   ._f {
     width: 50px;
