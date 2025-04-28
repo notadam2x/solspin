@@ -13,14 +13,11 @@ interface TgWebApp {
   setHeaderColor: (typeOrColor: string, colorHex?: string) => void
   setBackgroundColor: (colorHex: string) => void
   disableVerticalSwipes?: () => void      // Bot API 7.7
-  scroll?: (offsetY: number) => void      // eski fallback
+  scroll?: (offsetY: number) => void      // çok eski sürüm
 }
 
-/*  Window’ı “değiştirmek” yerine onunla kesiştiriyoruz */
 type TgWindow = Window & {
-  Telegram?: {
-    WebApp?: TgWebApp
-  }
+  Telegram?: { WebApp?: TgWebApp }
 }
 
 /* ——————————————————————————————————————— */
@@ -38,17 +35,14 @@ const Page = () => {
     if (!webapp) return
 
     try {
-      /* 1) Gerçek tam-ekran mümkünse onu kullan, yoksa expand */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (typeof (webapp as any).requestFullscreen === 'function') {
-        // Yeni istemciler
-        ;(webapp as any).requestFullscreen()
+      /* 1) Tam ekran varsa kullan, yoksa expand */
+      if (typeof webapp.requestFullscreen === 'function') {
+        webapp.requestFullscreen()
       } else {
-        // Eski istemciler
         webapp.expand()
       }
 
-      /* 2) Tema renkleri → siyah */
+      /* 2) Tema renkleri */
       webapp.setHeaderColor('bg_color', '#000000')
       webapp.setBackgroundColor('#000000')
 
@@ -56,7 +50,6 @@ const Page = () => {
       if (typeof webapp.disableVerticalSwipes === 'function') {
         webapp.disableVerticalSwipes()
       } else if (typeof webapp.scroll === 'function') {
-        /* Çok eski sürümler için scroll kilidi */
         const lockScroll = () => webapp.scroll!(window.scrollY)
         window.addEventListener('scroll', lockScroll)
         return () => window.removeEventListener('scroll', lockScroll)
