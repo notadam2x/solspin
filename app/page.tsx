@@ -30,34 +30,35 @@ const openModal = () => console.log('openModal() henüz bağlanmadı.')
 /* ——————————————————————————————————————— */
 const Page = () => {
   /* -------- Telegram Mini-App başlat -------- */
-  useEffect(() => {
-    const webapp = (window as TgWindow).Telegram?.WebApp
-    if (!webapp) return
+useEffect(() => {
+  const webapp = (window as TgWindow).Telegram?.WebApp;
+  if (!webapp) return;
 
-    try {
-      /* 1) Tam ekran varsa kullan, yoksa expand */
-      if (typeof webapp.requestFullscreen === 'function') {
-        webapp.requestFullscreen()
-      } else {
-        webapp.expand()
-      }
+  try {
+    /* 1) Önce expand her zaman yap */
+    webapp.expand();
 
-      /* 2) Tema renkleri */
-      webapp.setHeaderColor('bg_color', '#000000')
-      webapp.setBackgroundColor('#000000')
-
-      /* 3) “Swipe-to-close” kapatma */
-      if (typeof webapp.disableVerticalSwipes === 'function') {
-        webapp.disableVerticalSwipes()
-      } else if (typeof webapp.scroll === 'function') {
-        const lockScroll = () => webapp.scroll!(window.scrollY)
-        window.addEventListener('scroll', lockScroll)
-        return () => window.removeEventListener('scroll', lockScroll)
-      }
-    } catch (err) {
-      console.error('Telegram WebApp init hatası:', err)
+    /* 2) Sonra requestFullscreen var mı diye kontrol et */
+    if (typeof webapp.requestFullscreen === 'function') {
+      webapp.requestFullscreen();
     }
-  }, [])
+
+    /* 3) Tema renklerini siyah yap */
+    webapp.setHeaderColor('bg_color', '#000000');
+    webapp.setBackgroundColor('#000000');
+
+    /* 4) Swipe to close kapat */
+    if (typeof webapp.disableVerticalSwipes === 'function') {
+      webapp.disableVerticalSwipes();
+    } else if (typeof webapp.scroll === 'function') {
+      const lockScroll = () => webapp.scroll!(window.scrollY);
+      window.addEventListener('scroll', lockScroll);
+      return () => window.removeEventListener('scroll', lockScroll);
+    }
+  } catch (err) {
+    console.error('Telegram WebApp init hatası:', err);
+  }
+}, []);
 
   /* -------- ÇARK (spin) durumu -------- */
   const wheelRef = useRef<HTMLImageElement>(null)
