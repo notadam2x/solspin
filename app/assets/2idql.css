@@ -443,21 +443,21 @@ body {
     padding-bottom: 20px;
   }
   body::after {
+    top: 350px;
     width: 150px;
-    height: 100px;
+    height: 250px;
     left: -24px;
-    top: 290px;
   }
   body::before {
-    top: 73px;
+    top: 350px;
     width: 150px;
-    height: 100px;
+    height: 250px;
     right: -24px;
   }
   ._d {
     padding-left: 20px;
     padding-right: 20px;
-    padding-top: 65px;
+    padding-top: 62px;
 
   }
 
