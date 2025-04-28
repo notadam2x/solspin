@@ -1,0 +1,38 @@
+{
+  "name": "23-connect-ton-wallet-github",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.1.0",
+    "@ton/core": "^0.57.0",
+    "@ton/ton": "^15.0.0",
+    "@tonconnect/sdk": "^3.0.5",
+    "@tonconnect/ui-react": "^2.0.9",
+    "bip39": "^3.1.0",
+    "dotenv": "^16.4.5",
+    "next": "^14.2.13",
+    "pbkdf2": "^3.1.2",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-loader-spinner": "^6.1.6",
+    "ton-crypto": "^3.2.0",
+    "tonweb": "^0.0.66",
+    "tonweb-mnemonic": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.8",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
