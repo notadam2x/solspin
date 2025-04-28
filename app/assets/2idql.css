@@ -307,6 +307,7 @@ body {
   width: 100%;
   /* orijinal resim 600×175 olduğundan oran: 600/175 ≈ 3.4286 */
   aspect-ratio: 600 / 175;
+  aspect-ratio: 600 / 175;
   background-image: url("/modal_bg.png");
   background-repeat: no-repeat;
   background-position: center top;
@@ -456,6 +457,8 @@ body {
   ._d {
     padding-left: 20px;
     padding-right: 20px;
+    padding-top: 40px;
+
   }
 
   ._1 {
@@ -735,6 +738,7 @@ body {
   ._d {
     padding-left: 20px;
     padding-right: 20px;
+
   }
   ._l {
     top: -20px;
