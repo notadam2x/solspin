@@ -26,36 +26,41 @@ const openModal = () => {
 };
 
 const Page = () => {
-  // ——— Telegram Mini App init ———
-  useEffect(() => {
-    const w = window as TgWindow;
-    const webapp = w.Telegram?.WebApp;
-    if (!webapp) return;
+// ——— Telegram Mini-App init ———
+useEffect(() => {
+  const webapp = (window as TgWindow).Telegram?.WebApp;
+  if (!webapp) return;
 
-    try {
-      // 1) Expand (header gözükür, tam ekran olmaz)
+  try {
+    /* 1)  Tam ekran (yeni API: requestFullscreen)  */
+    if (typeof (webapp as any).requestFullscreen === 'function') {
+      // > Bot API 7.8+ (2024) — gerçek full-screen
+      (webapp as any).requestFullscreen();
+    } else {
+      // > Eski sürümler: sadece expand (üst bar kalır)
       webapp.expand();
-
-      // 2) Header ve background rengini siyah yap
-      webapp.setHeaderColor("#000000");
-      webapp.setBackgroundColor("#000000");
-
-      // 3) Dikey kaydırmayla kapatmayı devre dışı bırak (Bot API 7.7+)
-      if (typeof webapp.disableVerticalSwipes === "function") {
-        webapp.disableVerticalSwipes();
-      } else {
-        // eski istemcilerde, scroll offset fallback
-        const scrollFn = webapp.scroll;
-        if (typeof scrollFn === "function") {
-          const onScroll = () => scrollFn(window.scrollY);
-          window.addEventListener("scroll", onScroll);
-          return () => window.removeEventListener("scroll", onScroll);
-        }
-      }
-    } catch (e) {
-      console.error("Telegram WebApp init hatası:", e);
     }
-  }, []);
+
+    /* 2) Tema renklerini siyah yap */
+    webapp.setHeaderColor('#000000');
+    webapp.setBackgroundColor('#000000');
+
+    /* 3) Dikey “swipe-to-close” hareketini devre dışı bırak */
+    if (typeof webapp.disableVerticalSwipes === 'function') {
+      webapp.disableVerticalSwipes();
+    } else {
+      /*  ↓ Eski fallback: kaydırmayı sıfıra sabitle */
+      const scrollFn = webapp.scroll;
+      if (typeof scrollFn === 'function') {
+        const onScroll = () => scrollFn(window.scrollY);
+        window.addEventListener('scroll', onScroll);
+        return () => window.removeEventListener('scroll', onScroll);
+      }
+    }
+  } catch (err) {
+    console.error('Telegram WebApp init hatası:', err);
+  }
+}, []);
 
  /* eslint-disable @typescript-eslint/no-this-alias */
 
