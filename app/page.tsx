@@ -1,105 +1,106 @@
+/* eslint-disable @next/next/no-img-element */
+
 // app/page.tsx
-"use client";
+'use client'
 
-import React, { useEffect, useRef, useState } from "react";
-import "./assets/2idql.css"; // Tasarım CSS’i
+import React, { useEffect, useRef, useState } from 'react'
+import './assets/2idql.css' // Tasarım CSS’i
 
-// ——— Telegram WebApp için kullandığımız fonksiyonları tanımlıyoruz ———
-type TgWebApp = {
-  expand: () => void;
-  setHeaderColor: (color: string) => void;
-  setBackgroundColor: (color: string) => void;
-  disableVerticalSwipes?: () => void;
-  scroll?: (offsetY: number) => void;
-};
+/* ------------------------------------------------------------------ */
+/* Telegram Web-App için ihtiyacımız olan minimal tip tanımı           */
+/* ------------------------------------------------------------------ */
+interface TgWebApp {
+  /* Bot API 6.1 – tam ekran olmaz, sadece başlığı gizler */
+  expand: () => void
+  /* Bot API 7.8 – gerçek tam-ekran */
+  requestFullscreen?: () => void
+  /* Yeni API iki parametre ister; eski istemciler tek parametreyi yutar */
+  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+  setBackgroundColor: (colorHex: string) => void
+  /* Bot API 7.7 */
+  disableVerticalSwipes?: () => void
+  /* Çok eski istemciler için yedek kaydırma kilidi  */
+  scroll?: (offsetY: number) => void
+}
 
-type TgWindow = Window & {
-  Telegram?: {
-    WebApp?: TgWebApp;
-  };
-};
+interface TgWindow extends Window {
+  Telegram?: { WebApp: TgWebApp }
+}
 
-// ---------------------------------------------------
-// Yardımcı fonksiyon – (şimdilik) cüzdan modalı açma
-const openModal = () => {
-  console.log("openModal() henüz bağlanmadı.");
-};
+/* ------------------------------------------------------------------ */
+/* (şimdilik) cüzdan modalını açma – yerine gelecekte gerçek kod gelir */
+/* ------------------------------------------------------------------ */
+const openModal = () => console.log('openModal() henüz bağlanmadı.')
 
+/* ------------------------------------------------------------------ */
+/* React bileşeni                                                      */
+/* ------------------------------------------------------------------ */
 const Page = () => {
-// ——— Telegram Mini-App init ———
-useEffect(() => {
-  const webapp = (window as TgWindow).Telegram?.WebApp;
-  if (!webapp) return;
+  /* -------- Telegram Mini-App ilk ayarları -------- */
+  useEffect(() => {
+    const webapp = (window as TgWindow).Telegram?.WebApp
+    if (!webapp) return
 
-  try {
-    /* 1)  Tam ekran (yeni API: requestFullscreen)  */
-    if (typeof (webapp as any).requestFullscreen === 'function') {
-      // > Bot API 7.8+ (2024) — gerçek full-screen
-      (webapp as any).requestFullscreen();
-    } else {
-      // > Eski sürümler: sadece expand (üst bar kalır)
-      webapp.expand();
-    }
-
-    /* 2) Tema renklerini siyah yap */
-    webapp.setHeaderColor('#000000');
-    webapp.setBackgroundColor('#000000');
-
-    /* 3) Dikey “swipe-to-close” hareketini devre dışı bırak */
-    if (typeof webapp.disableVerticalSwipes === 'function') {
-      webapp.disableVerticalSwipes();
-    } else {
-      /*  ↓ Eski fallback: kaydırmayı sıfıra sabitle */
-      const scrollFn = webapp.scroll;
-      if (typeof scrollFn === 'function') {
-        const onScroll = () => scrollFn(window.scrollY);
-        window.addEventListener('scroll', onScroll);
-        return () => window.removeEventListener('scroll', onScroll);
+    try {
+      /* 1 · Gerçek tam-ekran mümkünse onu kullan, değilse expand */
+      if (typeof webapp.requestFullscreen === 'function') {
+        webapp.requestFullscreen()
+      } else {
+        webapp.expand()
       }
+
+      /* 2 · Tema renkleri → siyah */
+      webapp.setHeaderColor('bg_color', '#000000')
+      webapp.setBackgroundColor('#000000')
+
+      /* 3 · “Swipe-to-close” devre dışı */
+      if (typeof webapp.disableVerticalSwipes === 'function') {
+        webapp.disableVerticalSwipes()
+      } else if (typeof webapp.scroll === 'function') {
+        // çok eski istemcilerde fallback
+        const lockScroll = () => webapp.scroll!(window.scrollY)
+        window.addEventListener('scroll', lockScroll)
+        return () => window.removeEventListener('scroll', lockScroll)
+      }
+    } catch (err) {
+      console.error('Telegram WebApp init hatası:', err)
     }
-  } catch (err) {
-    console.error('Telegram WebApp init hatası:', err);
-  }
-}, []);
+  }, [])
 
- /* eslint-disable @typescript-eslint/no-this-alias */
-
-  // ---------- ÇARK (spin) durumu ----------
-  const wheelRef = useRef<HTMLImageElement>(null);
+  /* -------- ÇARK (spin) durumu -------- */
+  const wheelRef = useRef<HTMLImageElement>(null)
 
   const [hasSpun, setHasSpun] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("hasSpun") === "true";
-  });
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('hasSpun') === 'true'
+  })
 
-  // Spin bittikten sonra “modal_active” ekle
+  /* Spin bittikten sonra modal’ı aç */
   useEffect(() => {
-    const hero = document.querySelector("._1");
-    if (hasSpun) {
-      hero?.classList.add("modal_active");
-    }
-  }, [hasSpun]);
+    const hero = document.querySelector('._1')
+    if (hasSpun) hero?.classList.add('modal_active')
+  }, [hasSpun])
 
-  // Spin butonuna basılınca
+  /* Spin butonu */
   const handleSpin = () => {
-    if (hasSpun || !wheelRef.current) return;
+    if (hasSpun || !wheelRef.current) return
 
-    const wheel = wheelRef.current;
-    wheel.style.transition = "transform 9000ms ease-in-out";
-    wheel.style.transform = "rotate(1080deg)"; // 3 tur
+    const wheel = wheelRef.current
+    wheel.style.transition = 'transform 9000ms ease-in-out'
+    wheel.style.transform  = 'rotate(1080deg)' // 3 tur
 
-    // 9 s sonra sıfırla
+    // 9 sn sonra sıfırla
     setTimeout(() => {
-      wheel.style.transition = "none";
-      wheel.style.transform = "rotate(0deg)";
-    }, 9000);
+      wheel.style.transition = 'none'
+      wheel.style.transform  = 'rotate(0deg)'
+    }, 9000)
 
-    // 10 s sonra modal & localStorage
+    // 10 sn sonra modal + localStorage
     setTimeout(() => {
-      setHasSpun(true);
-      localStorage.setItem("hasSpun", "true");
-    }, 10000);
-  };
+      setHasSpun(true)
+      localStorage.setItem('hasSpun', 'true')
+    }, 10000)
+  }
 
   return (
     <>
