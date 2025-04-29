@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // Eğer başka unused-vars hatası çıkarsa
 import { Connection } from "@solana/web3.js"; // clusterApiUrl kaldırıldı
 
-let userPublicKey: any = null;
+let userPublicKey = null; // ": any" ifadesi kaldırıldı
 
 // Helius RPC URL (anahtar gizli tutulmalı!)
 const HELIUS_RPC_URL =
@@ -20,7 +20,7 @@ export async function connectWallet() {
   }
 
   try {
-    // @ts-expect-error: window.solana tipi sahte, Phantom API burada mevcut
+    // @ts-expect-error
     const resp = await window.solana.connect();
     userPublicKey = resp.publicKey;
     console.log("Cüzdan bağlandı:", userPublicKey.toBase58());
