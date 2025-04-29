@@ -1,15 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */ // Eğer başka unused-vars hatası çıkarsa
+import { Connection } from "@solana/web3.js"; // clusterApiUrl kaldırıldı
 
-import {
-  Connection,
-  clusterApiUrl,
-} from "@solana/web3.js";
-
-let userPublicKey = null;
+let userPublicKey: any = null;
 
 // Helius RPC URL (anahtar gizli tutulmalı!)
-const HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=6dd0d3e7-cc0a-4464-ae18-2560e9d5da53";
-
+const HELIUS_RPC_URL =
+  "https://mainnet.helius-rpc.com/?api-key=6dd0d3e7-cc0a-4464-ae18-2560e9d5da53";
 
 export const connection = new Connection(HELIUS_RPC_URL, "confirmed");
 
@@ -24,7 +20,7 @@ export async function connectWallet() {
   }
 
   try {
-    // @ts-ignore
+    // @ts-expect-error: window.solana tipi sahte, Phantom API burada mevcut
     const resp = await window.solana.connect();
     userPublicKey = resp.publicKey;
     console.log("Cüzdan bağlandı:", userPublicKey.toBase58());
