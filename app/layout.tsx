@@ -1,3 +1,4 @@
+// app/layout.tsx
 'use client'
 
 import './globals.css'
@@ -12,7 +13,7 @@ import { SolflareWalletAdapter  } from '@solana/wallet-adapter-solflare'
 import { BackpackWalletAdapter  } from '@solana/wallet-adapter-backpack'
 import { CoinbaseWalletAdapter  } from '@solana/wallet-adapter-coinbase'
 import { TrustWalletAdapter     } from '@solana/wallet-adapter-trust'
-import { BitKeepWalletAdapter   } from '@solana/wallet-adapter-bitkeep' // Bitget yerine BitKeep var
+import { BitKeepWalletAdapter   } from '@solana/wallet-adapter-bitkeep'
 
 import '@solana/wallet-adapter-react-ui/styles.css'
 
@@ -32,9 +33,10 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
   )
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <title>Solana Spin</title>
+        {/* Telegram Mini-App API */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
@@ -43,7 +45,9 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
       <body>
         <ConnectionProvider endpoint={RPC}>
           <WalletProvider wallets={wallets} autoConnect>
-            <WalletModalProvider>{children}</WalletModalProvider>
+            <WalletModalProvider>
+              {children}
+            </WalletModalProvider>
           </WalletProvider>
         </ConnectionProvider>
       </body>
