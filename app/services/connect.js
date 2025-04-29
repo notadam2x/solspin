@@ -1,3 +1,4 @@
+// app/services/connect.js
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
@@ -44,6 +45,11 @@ export async function disconnectWallet() {
   }
 }
 
+/**
+ * Returns the currently connected public key.
+ * First tries the wallet-adapter injected provider (window.solana.publicKey),
+ * then falls back to the legacy userPublicKey.
+ */
 export function getUserPublicKey() {
-  return userPublicKey;
+  return window.solana?.publicKey || userPublicKey;
 }
