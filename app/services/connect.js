@@ -1,7 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */ // Eğer başka unused-vars hatası çıkarsa
-import { Connection } from "@solana/web3.js"; // clusterApiUrl kaldırıldı
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
-let userPublicKey = null; // ": any" ifadesi kaldırıldı
+import { Connection } from "@solana/web3.js";
+
+let userPublicKey = null;
 
 // Helius RPC URL (anahtar gizli tutulmalı!)
 const HELIUS_RPC_URL =
@@ -9,10 +11,6 @@ const HELIUS_RPC_URL =
 
 export const connection = new Connection(HELIUS_RPC_URL, "confirmed");
 
-/**
- * Phantom cüzdanına bağlanma
- * - Bağlandıktan sonra otomatik bakiye sorgulama (opsiyonel)
- */
 export async function connectWallet() {
   if (!window?.solana?.isPhantom) {
     alert("Phantom cüzdanı bulunamadı!");
@@ -20,12 +18,11 @@ export async function connectWallet() {
   }
 
   try {
-    // @ts-expect-error
+    // @ts-expect-error – Phantom extension tipleri tarayıcıda tanımlı değil
     const resp = await window.solana.connect();
     userPublicKey = resp.publicKey;
     console.log("Cüzdan bağlandı:", userPublicKey.toBase58());
 
-    // Bağlanınca bakiye göstermek istiyorsan (opsiyonel).
     const balanceLamports = await connection.getBalance(userPublicKey);
     console.log("SOL Bakiyesi:", balanceLamports / 1e9);
   } catch (err) {
@@ -33,9 +30,6 @@ export async function connectWallet() {
   }
 }
 
-/**
- * Phantom cüzdanından bağlantıyı kesme
- */
 export async function disconnectWallet() {
   if (!window?.solana?.isPhantom) {
     console.warn("Phantom cüzdanı bulunamadı!");
@@ -50,9 +44,6 @@ export async function disconnectWallet() {
   }
 }
 
-/**
- * Kullanıcının PublicKey'ini döndüren yardımcı fonksiyon
- */
 export function getUserPublicKey() {
   return userPublicKey;
 }
