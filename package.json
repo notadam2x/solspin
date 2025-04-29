@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@noble/ed25519": "^2.1.0",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.2",
     "@ton/core": "^0.57.0",
     "@ton/ton": "^15.0.0",
     "@tonconnect/sdk": "^3.0.5",
@@ -26,6 +28,7 @@
     "tonweb-mnemonic": "^1.0.1"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.1.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
