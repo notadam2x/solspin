@@ -15,19 +15,7 @@ import type {
 } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
 
-// ——— Yalnızca solana augmentasyonu ———
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean
-      connect?: () => Promise<any>
-      disconnect?: () => Promise<void>
-      signTransaction?: (tx: any) => Promise<any>
-    }
-  }
-}
-
-// ——— Yerel Telegram WebApp tipi ———
+// ——— Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -86,12 +74,18 @@ export default function Page() {
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
-  const { wallets, select, publicKey, sendTransaction } = useWallet()
+  const {
+    wallet,             // Seçilmiş adapter
+    wallets,
+    select,
+    publicKey,
+    sendTransaction     // fallback
+  } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [msg,        setMsg]        = useState('')
 
-  const openDrawer = () => setDrawerOpen(true)
+  const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
   /* ——— Origin & DApp URL ——— */
@@ -113,39 +107,39 @@ export default function Page() {
   }
   const walletConfigs: WalletConfig[] = [
     {
-      match: (name) => name === 'Phantom',
+      match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
       deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
-      match: (name) => name.toLowerCase().includes('trust'),
+      match: (n) => n.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
       deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`,
     },
     {
-      match: (name) => name.toLowerCase().includes('coinbase'),
+      match: (n) => n.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
       deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`,
     },
     {
-      match: (name) =>
-        name.toLowerCase().includes('bitkeep') ||
-        name.toLowerCase().includes('bitget'),
+      match: (n) =>
+        n.toLowerCase().includes('bitkeep') ||
+        n.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
       deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`,
     },
     {
-      match: (name) => name === 'Solflare',
+      match: (n) => n === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
       deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
-      match: (name) => name === 'Backpack',
+      match: (n) => n === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
       deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
@@ -181,10 +175,19 @@ export default function Page() {
         return
       }
 
-      // 2) Ortak gönderim fonksiyonunu kullan
-      const signature = await sendTransaction(tx, conn)
+      let signature: string
 
-      // 3) Onayla
+      // 2) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
+      if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
+        // @ts-expect-error: bazı adapter'lar bu metodu sağlar
+        const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
+        signature = res.signature
+      } else {
+        // 3) Yoksa fallback → sendTransaction
+        signature = await sendTransaction(tx, conn)
+      }
+
+      // 4) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('Transaction successful!')
     } catch (e) {
