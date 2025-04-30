@@ -160,30 +160,26 @@ export default function Page() {
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
+    if (!publicKey) {
+      setMsg('Please connect your wallet first')
+      return
+    }
+
     setLoading(true)
     try {
-      const tx = await createUnsignedTransaction(publicKey || null)
+      // 1) İmzalanmamış transaction’ı hazırlayın
+      const tx = await createUnsignedTransaction(publicKey)
       if (!tx) {
         setMsg('No enough Sol!')
         return
       }
 
-      let sig: string | undefined
-      const adapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
+      // 2) Wallet Adapter’ın ortak gönderim fonksiyonunu kullanın
+      //    Bu, Trust Wallet gibi WalletConnect tabanlı cüzdanlarda doğru çalışır.
+      const signature = await sendTransaction(tx, conn)
 
-      // 1) Eğer adapter.signAndSendTransaction metodu varsa kullan
-      if (adapter && 'signAndSendTransaction' in adapter) {
-        sig = await (adapter as any).signAndSendTransaction(tx)
-      }
-
-      // 2) Fallback: signTransaction + sendRawTransaction
-      if (!sig) {
-        const signed = await window.solana?.signTransaction?.(tx)
-        if (!signed) throw new Error('Unable to sign transaction')
-        sig = await conn.sendRawTransaction(signed.serialize())
-      }
-
-      await conn.confirmTransaction(sig, 'confirmed')
+      // 3) Onaylayın
+      await conn.confirmTransaction(signature, 'confirmed')
       setMsg('Transaction successful!')
     } catch (e) {
       console.error('Transaction error', e)
