@@ -46,8 +46,9 @@ export default function Page() {
       webapp.requestFullscreen?.()
       webapp.setHeaderColor('bg_color', '#000000')
       webapp.setBackgroundColor('#000000')
-      if (webapp.disableVerticalSwipes) webapp.disableVerticalSwipes()
-      else if (webapp.scroll) {
+      if (webapp.disableVerticalSwipes) {
+        webapp.disableVerticalSwipes()
+      } else if (webapp.scroll) {
         const lock = () => webapp.scroll!(window.scrollY)
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
