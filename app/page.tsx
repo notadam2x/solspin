@@ -20,6 +20,7 @@ declare global {
       disconnect?: () => Promise<void>
       signTransaction?: (tx: any) => Promise<any>
     }
+    Telegram?: { WebApp?: any }
   }
 }
 
@@ -80,7 +81,7 @@ export default function Page() {
   const { connection: conn } = useConnection()
   const {
     wallets,
-    wallet,        // şu anda seçili wallet adapter'ı
+    wallet,
     select,
     connect,
     publicKey,
@@ -112,44 +113,13 @@ export default function Page() {
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-    {
-      match: name => name === 'Phantom',
-      label: 'Phantom',
-      icon: '/phantom.svg',
-      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
-    },
-    {
-      match: name => name.toLowerCase().includes('trust'),
-      label: 'Trust Wallet',
-      icon: '/trustwallet.svg',
-      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
-    },
-    {
-      match: name => name.toLowerCase().includes('coinbase'),
-      label: 'Coinbase Wallet',
-      icon: '/coinbase.svg',
-      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
-    },
-    {
-      match: name =>
-        name.toLowerCase().includes('bitkeep') ||
-        name.toLowerCase().includes('bitget'),
-      label: 'Bitget Wallet',
-      icon: '/bitget.svg',
-      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`
-    },
-    {
-      match: name => name === 'Solflare',
-      label: 'Solflare',
-      icon: '/solflare.svg',
-      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-    },
-    {
-      match: name => name === 'Backpack',
-      label: 'Backpack',
-      icon: '/backpack.svg',
-      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-    },
+    { match: n => n === 'Phantom',           label: 'Phantom',         icon: '/phantom.svg',   deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: n => n.toLowerCase().includes('trust'),  label: 'Trust Wallet',     icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
+    { match: n => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg',  deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
+    { match: n => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'),
+      label: 'Bitget Wallet', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
+    { match: n => n === 'Solflare',           label: 'Solflare',        icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: n => n === 'Backpack',           label: 'Backpack',        icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -176,17 +146,16 @@ export default function Page() {
         return
       }
 
-      // seçili wallet adapter adı
       const name = wallet?.adapter.name
 
       if (name === 'Trust Wallet') {
         // Trust Wallet için manuel imzala + raw gönder
-        // @ts-expect-error
+        // @ts-expect-error adapter may not implement signTransaction
         const signed = await wallet.adapter.signTransaction?.(tx)
-        const sig    = await conn.sendRawTransaction(signed.serialize())
+        const sig    = await conn.sendRawTransaction(signed!.serialize())
         await conn.confirmTransaction(sig, 'confirmed')
       } else {
-        // diğerleri için sendTransaction helper
+        // diğerleri için helper
         const sig = await sendTransaction(tx, conn)
         await conn.confirmTransaction(sig, 'confirmed')
       }
@@ -210,8 +179,6 @@ export default function Page() {
   /* ——— Cüzdan seçimi ——— */
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
-
-    // Phantom
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
@@ -221,18 +188,13 @@ export default function Page() {
         return openPhantomBrowser()
       }
     }
-
-    // Yüklü diğer cüzdanlar
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
       await connect()
       return doTx()
     }
-
-    // yüklü değilse deeplink
     window.open(w.deepLink, '_blank')
   }
-
 
       return (
         <>
