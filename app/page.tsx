@@ -197,34 +197,35 @@ export default function Page() {
       setTimeout(() => setMsg(''), 5000)
     }
   }
+
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
     if (!publicKey) openDrawer()
     else doTx()
   }
 
-/* ——— Cüzdan seçimi ——— */
-const handleWalletClick = async (w: DrawerWallet) => {
-  closeDrawer()
+  /* ——— Cüzdan seçimi ——— */
+  const handleWalletClick = async (w: DrawerWallet) => {
+    closeDrawer()
 
-  if (w.adapter.name === 'Phantom') {
-    // burada window.solana’ı as any ile cast ediyoruz
-    const solana = (window as any).solana
-    if (w.readyState === 'Installed' && solana?.isPhantom) {
+    if (w.adapter.name === 'Phantom') {
+      // burada window.solana’ı as any ile cast ediyoruz
+      const solana = (window as any).solana
+      if (w.readyState === 'Installed' && solana?.isPhantom) {
+        await select(w.adapter.name as WalletName)
+        return doTx()
+      } else {
+        return openPhantomBrowser()
+      }
+    }
+
+    if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
       return doTx()
-    } else {
-      return openPhantomBrowser()
     }
-  }
 
-  if (w.readyState === 'Installed') {
-    await select(w.adapter.name as WalletName)
-    return doTx()
+    window.open(w.deepLink, '_blank')
   }
-
-  window.open(w.deepLink, '_blank')
-}
 
 
 
