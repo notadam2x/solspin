@@ -11,7 +11,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
-/* ——— Sadece solana için augment edin ——— */
+/* ——— Global Window augmentasyonu ——— */
 declare global {
   interface Window {
     solana?: {
@@ -19,6 +19,19 @@ declare global {
       connect?: () => Promise<any>
       disconnect?: () => Promise<void>
       signTransaction?: (tx: any) => Promise<any>
+    }
+    Telegram?: {
+      WebApp: {
+        expand: () => void
+        requestFullscreen?: () => void            // Bot API 7.8+
+        setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+        setBackgroundColor: (colorHex: string) => void
+        onEvent: (event: string, callback: () => void) => void  // Bot API 7.x+
+        offEvent: (event: string) => void                    // Bot API 7.x+
+        themeParams: Record<string, any>
+        disableVerticalSwipes?: () => void    // Bot API 7.7
+        scroll?: (offsetY: number) => void    // eski sürüm
+      }
     }
   }
 }
