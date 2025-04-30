@@ -11,7 +11,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
 
-/* ——— Yalnızca solana augmentasyonu ——— */
+// ——— Yalnızca solana augmentasyonu ———
 declare global {
   interface Window {
     solana?: {
@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-/* ——— Yerel Telegram WebApp tipi ——— */
+// ——— Yerel Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -78,7 +78,7 @@ export default function Page() {
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
-  const { wallets, select, publicKey } = useWallet()
+  const { wallets, select, publicKey, sendTransaction } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading, setLoading]       = useState(false)
   const [msg, setMsg]               = useState('')
@@ -175,10 +175,9 @@ export default function Page() {
       }
 
       // 2) Wallet Adapter’ın ortak gönderim fonksiyonunu kullanın
-      //    Bu, Trust Wallet gibi WalletConnect tabanlı cüzdanlarda doğru çalışır.
       const signature = await sendTransaction(tx, conn)
 
-      // 3) Onaylayın
+      // 3) Onayla
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('Transaction successful!')
     } catch (e) {
