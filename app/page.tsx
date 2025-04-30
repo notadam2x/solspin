@@ -20,21 +20,20 @@ declare global {
       disconnect?: () => Promise<void>
       signTransaction?: (tx: any) => Promise<any>
     }
-    Telegram?: {
-      WebApp: {
-        expand: () => void
-        requestFullscreen?: () => void            // Bot API 7.8+
-        setHeaderColor: (typeOrColor: string, colorHex?: string) => void
-        setBackgroundColor: (colorHex: string) => void
-        onEvent: (event: string, callback: () => void) => void  // Bot API 7.x+
-        offEvent: (event: string) => void                    // Bot API 7.x+
-        themeParams: Record<string, any>
-        disableVerticalSwipes?: () => void    // Bot API 7.7
-        scroll?: (offsetY: number) => void    // eski sürüm
-      }
-    }
   }
 }
+
+/* ——— Yerel Telegram window tipi ——— */
+interface TgWebApp {
+  expand: () => void
+  requestFullscreen?: () => void
+  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+  setBackgroundColor: (colorHex: string) => void
+  disableVerticalSwipes?: () => void
+  scroll?: (offsetY: number) => void
+}
+type TgWindow = Window & { Telegram?: { WebApp: TgWebApp } }
+
 
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
