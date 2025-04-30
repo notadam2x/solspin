@@ -178,9 +178,10 @@ const doTx = async () => {
 
     let sig: string
     if (activeAdapter && 'signAndSendTransaction' in activeAdapter) {
-      // @ts-expect-error: bazı adapter'lar signAndSendTransaction sağlar
+      // Trust Wallet ve benzerleri için signAndSendTransaction kullan
       sig = await (activeAdapter as any).signAndSendTransaction(tx)
     } else {
+      // Diğer cüzdanlar için standart yol
       sig = await sendTransaction(tx, conn)
     }
 
