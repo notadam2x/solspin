@@ -127,8 +127,7 @@ export default function Page() {
         name.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: `https://web3.bitget.com/?ref=${dappUrl}`
-    },
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`    },
     {
       match: name => name === 'Solflare',
       label: 'Solflare',
