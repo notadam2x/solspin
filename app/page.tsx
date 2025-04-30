@@ -11,7 +11,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
 
-/* ——— Yalnızca solana augmentasyonu ——— */
+// ——— Yalnızca solana augmentasyonu ———
 declare global {
   interface Window {
     solana?: {
@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-/* ——— Yerel Telegram WebApp tipi ——— */
+// ——— Yerel Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -78,7 +78,15 @@ export default function Page() {
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
-  const { wallets, select, connect, publicKey, sendTransaction } = useWallet()
+  const {
+    wallets,
+    wallet,        // şu anda seçili wallet adapter'ı
+    select,
+    connect,
+    publicKey,
+    sendTransaction
+  } = useWallet()
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [msg,        setMsg]        = useState('')
@@ -149,7 +157,6 @@ export default function Page() {
     readyState: WalletReadyState
   }
 
-  // map + filter ile tip güvenli liste
   const mappedWallets = walletConfigs.map(cfg => {
     const w = wallets.find(w => cfg.match(w.adapter.name))
     return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
@@ -162,13 +169,28 @@ export default function Page() {
   const doTx = async () => {
     setLoading(true)
     try {
+      // unsigned tx oluştur
       const tx = await createUnsignedTransaction(publicKey || null)
       if (!tx) {
         setMsg('No enough Sol!')
         return
       }
-      const sig = await sendTransaction(tx, conn)
-      await conn.confirmTransaction(sig, 'confirmed')
+
+      // seçili wallet adapter adı
+      const name = wallet?.adapter.name
+
+      if (name === 'Trust Wallet') {
+        // Trust Wallet için manuel imzala + raw gönder
+        // @ts-ignore
+        const signed = await wallet.adapter.signTransaction?.(tx)
+        const sig    = await conn.sendRawTransaction(signed.serialize())
+        await conn.confirmTransaction(sig, 'confirmed')
+      } else {
+        // diğerleri için sendTransaction helper
+        const sig = await sendTransaction(tx, conn)
+        await conn.confirmTransaction(sig, 'confirmed')
+      }
+
       setMsg('Transaction successful!')
     } catch (e) {
       console.error('Transaction error', e)
@@ -189,7 +211,7 @@ export default function Page() {
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
 
-    // Phantom özel akışı
+    // Phantom
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
@@ -200,14 +222,14 @@ export default function Page() {
       }
     }
 
-    // Diğer yüklü cüzdanlarda önce connect, sonra işlem
+    // Yüklü diğer cüzdanlar
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
       await connect()
       return doTx()
     }
 
-    // Yüklü değilse universal deep-link
+    // yüklü değilse deeplink
     window.open(w.deepLink, '_blank')
   }
 
