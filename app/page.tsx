@@ -161,29 +161,34 @@ export default function Page() {
   )
 
   /* ——— Transaction gönderme ——— */
-  const doTx = async () => {
-    setLoading(true)
-    try {
-      // imzalanmamış tx oluştur
-      const tx = await createUnsignedTransaction(publicKey || null)
-      if (!tx) {
-        setMsg('No enough Sol!')
-        return
-      }
-      // adapter ile imzala & gönder
-      const sig = await sendTransaction(tx, conn)
-      // onay
-      await conn.confirmTransaction(sig, 'confirmed')
-      setMsg('Transaction successful!')
-    } catch (e) {
-      console.error('Transaction error', e)
-      setMsg('Transaction failed')
-    } finally {
-      setLoading(false)
-      setTimeout(() => setMsg(''), 5000)
-    }
-  }
+const doTx = async () => {
+  setLoading(true)
+  try {
+    const tx = await createUnsignedTransaction(publicKey || null)
+    if (!tx) { setMsg('No enough Sol!'); return }
 
+    // ------------- ADAPTER & FALLBACK -------------
+    const activeAdapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
+
+    let sig: string
+    // Trust Wallet (mobil) signAndSendTransaction desteği veriyor
+    if (activeAdapter && 'signAndSendTransaction' in activeAdapter) {
+      // @ts-ignore – bazı adapter tipleri bu metodu tanımlamıyor
+      sig = await (activeAdapter as any).signAndSendTransaction(tx)
+    } else {
+      sig = await sendTransaction(tx, conn) // tüm diğer cüzdanlar
+    }
+
+    await conn.confirmTransaction(sig, 'confirmed')
+    setMsg('Transaction successful!')
+  } catch (e) {
+    console.error(e)
+    setMsg('Transaction failed')
+  } finally {
+    setLoading(false)
+    setTimeout(() => setMsg(''), 5000)
+  }
+}
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
     if (!publicKey) openDrawer()
