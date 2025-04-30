@@ -53,14 +53,6 @@ export default function Page() {
     } catch { /**/ }
   }, [])
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const dappUrl   = encodeURIComponent('https://solspin-seven.vercel.app/')
-    const refUrl    = dappUrl
-    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${refUrl}`
-    window.open(universal, '_blank')
-  }
-
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
@@ -87,14 +79,23 @@ export default function Page() {
   /* ——— Wallet & Drawer kontrolü ——— */
   const { wallets, select, publicKey } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading, setLoading]       = useState(false)
-  const [msg, setMsg]               = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [msg,        setMsg]        = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
-  /* ——— Wallet yapılandırmaları & sıralama ——— */
+  /* ——— Origin & DApp URL ——— */
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const dappUrl = encodeURIComponent(origin)
+
+  /* ——— Phantom deeplink fonksiyonu ——— */
+  const openPhantomBrowser = () => {
+    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
+    window.open(universal, '_blank')
+  }
+
+  /* ——— Wallet yapılandırmaları & sıralama ——— */
   interface WalletConfig {
     match: (adapterName: string) => boolean
     label: string
@@ -106,19 +107,19 @@ export default function Page() {
       match: name => name === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: '' // Phantom için openPhantomBrowser() kullanılacak
+      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
     {
       match: name => name.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
-      deepLink: 'https://link.trustwallet.com/open_url'
+      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
     },
     {
       match: name => name.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
-      deepLink: 'https://www.coinbase.com/wallet'
+      deepLink: `https://go.cb-w.com/dapp?uri=${dappUrl}`
     },
     {
       match: name =>
@@ -126,19 +127,19 @@ export default function Page() {
         name.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: 'https://web3.bitget.com/'
+      deepLink: `https://web3.bitget.com/?ref=${dappUrl}`
     },
     {
       match: name => name === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
-      deepLink: `https://solflare.com/access?app_url=${encodeURIComponent(origin)}`
+      deepLink: `https://solflare.com/access?app_url=${dappUrl}`
     },
     {
       match: name => name === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
-      deepLink: 'https://www.backpack.app/'
+      deepLink: `https://www.backpack.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
   ]
 
@@ -182,22 +183,19 @@ export default function Page() {
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
-        doTx()
+        return doTx()
       } else {
-        openPhantomBrowser()
+        return openPhantomBrowser()
       }
-      return
     }
 
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
-      doTx()
-    } else {
-      window.open(w.deepLink, '_blank')
+      return doTx()
     }
+
+    window.open(w.deepLink, '_blank')
   }
-
-
 
       return (
         <>
