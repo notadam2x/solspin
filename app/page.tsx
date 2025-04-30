@@ -8,10 +8,10 @@ import './assets/2idql.css'
 import './assets/connect.css'
 import { Transition } from '@headlessui/react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
+import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
-/* ——— Yalnızca solana augmentasyonu ——— */
+// ——— Yalnızca solana augmentasyonu ———
 declare global {
   interface Window {
     solana?: {
@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-/* ——— Yerel Telegram WebApp tipi ——— */
+// ——— Yerel Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
   requestFullscreen?: () => void
@@ -87,8 +87,8 @@ export default function Page() {
   /* ——— Wallet & Drawer kontrolü ——— */
   const { wallets, select, publicKey } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [msg, setMsg]               = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
@@ -181,7 +181,7 @@ export default function Page() {
 
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
-        await select('Phantom')
+        await select(w.adapter.name as WalletName)
         doTx()
       } else {
         openPhantomBrowser()
@@ -190,12 +190,13 @@ export default function Page() {
     }
 
     if (w.readyState === 'Installed') {
-      await select(w.adapter.name)
+      await select(w.adapter.name as WalletName)
       doTx()
     } else {
       window.open(w.deepLink, '_blank')
     }
   }
+
 
 
       return (
