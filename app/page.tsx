@@ -11,17 +11,15 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
-// *** Aşağıdaki deklarasyonu dosyanın en başına ekleyin ***
+/* ——— Sadece solana için augment edin ——— */
 declare global {
   interface Window {
     solana?: {
       isPhantom?: boolean
-      // Diğer metotları da isterseniz ekleyebilirsiniz:
-      // connect?: () => Promise<any>
-      // signTransaction?: (tx: any) => Promise<any>
-      // disconnect?: () => Promise<void>
+      connect?: () => Promise<any>
+      disconnect?: () => Promise<void>
+      signTransaction?: (tx: any) => Promise<any>
     }
-    Telegram?: { WebApp?: any }
   }
 }
 
