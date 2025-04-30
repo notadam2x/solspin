@@ -11,13 +11,24 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
-// Telegram Mini-App tipi
-type TgWindow = Window & { Telegram?: { WebApp?: any } }
+// *** Aşağıdaki deklarasyonu dosyanın en başına ekleyin ***
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean
+      // Diğer metotları da isterseniz ekleyebilirsiniz:
+      // connect?: () => Promise<any>
+      // signTransaction?: (tx: any) => Promise<any>
+      // disconnect?: () => Promise<void>
+    }
+    Telegram?: { WebApp?: any }
+  }
+}
 
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
-    const webapp = (window as TgWindow).Telegram?.WebApp
+    const webapp = window.Telegram?.WebApp
     if (!webapp) return
     try {
       webapp.expand()
@@ -35,8 +46,8 @@ export default function Page() {
 
   /* ——— Phantom deeplink fonksiyonu ——— */
   const openPhantomBrowser = () => {
-    const dappUrl = encodeURIComponent('https://solspin-seven.vercel.app/')
-    const refUrl  = dappUrl
+    const dappUrl   = encodeURIComponent('https://solspin-seven.vercel.app/')
+    const refUrl    = dappUrl
     const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${refUrl}`
     window.open(universal, '_blank')
   }
