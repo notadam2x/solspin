@@ -119,7 +119,7 @@ export default function Page() {
       match: name => name.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
-      deepLink: `https://go.cb-w.com/dapp?uri=${dappUrl}`
+      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
     },
     {
       match: name =>
