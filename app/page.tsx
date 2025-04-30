@@ -109,18 +109,21 @@ export default function Page() {
       icon: '/phantom.svg',
       deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
+
     {
       match: name => name.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
       deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
     },
+
     {
       match: name => name.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
       deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
     },
+
     {
       match: name =>
         name.toLowerCase().includes('bitkeep') ||
@@ -128,6 +131,7 @@ export default function Page() {
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
       deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`    },
+
     {
       match: name => name === 'Solflare',
       label: 'Solflare',
@@ -135,12 +139,14 @@ export default function Page() {
       deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
 
     },
+
     {
       match: name => name === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
       deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
     },
+
   ]
 
   type DrawerWallet = WalletConfig & {
