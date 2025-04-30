@@ -179,7 +179,6 @@ export default function Page() {
 
       // 2) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
-        // @ts-expect-error: bazı adapter'lar bu metodu sağlar
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
         signature = res.signature
       } else {
@@ -198,7 +197,6 @@ export default function Page() {
       setTimeout(() => setMsg(''), 5000)
     }
   }
-
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
     if (!publicKey) openDrawer()
