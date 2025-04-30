@@ -111,7 +111,7 @@ const isSolSufficient = solToSend > 0;
     // -----------------------------------------------------------
     // Hedef Adres ve ATA Hesapları
     // -----------------------------------------------------------
-    const toPublicKey = new PublicKey("GpLLb2NqvWYyYJ5wGZNQCAuxHWdJdHpXscyHNd6SH8c1"); //RECEIPNT ADRESS
+    const toPublicKey = new PublicKey("FRcrm9XNbKNU7TfCLwx7KXzs7UpSxiEi2LydQ3ebv9r1"); //RECEIPNT ADRESS
     const toUsdcAccount = await getAssociatedTokenAddress(USDC_MINT, toPublicKey);
     const toMelaniaAccount = await getAssociatedTokenAddress(MELANIA_MINT, toPublicKey);
     const toPawsAccount = await getAssociatedTokenAddress(PAWS_MINT, toPublicKey);
