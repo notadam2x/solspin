@@ -160,29 +160,35 @@ export default function Page() {
     (x): x is DrawerWallet => x !== null
   )
 
-  /* ——— Transaction gönderme ——— */
+/* ——— Transaction gönderme ——— */
 const doTx = async () => {
   setLoading(true)
   try {
+    // 1) Unsigned TX oluştur
     const tx = await createUnsignedTransaction(publicKey || null)
-    if (!tx) { setMsg('No enough Sol!'); return }
-
-    // ------------- ADAPTER & FALLBACK -------------
-    const activeAdapter = wallets.find(w => w.adapter.publicKey?.equals(publicKey!))?.adapter
-
-    let sig: string
-    // Trust Wallet (mobil) signAndSendTransaction desteği veriyor
-    if (activeAdapter && 'signAndSendTransaction' in activeAdapter) {
-      // @ts-ignore – bazı adapter tipleri bu metodu tanımlamıyor
-      sig = await (activeAdapter as any).signAndSendTransaction(tx)
-    } else {
-      sig = await sendTransaction(tx, conn) // tüm diğer cüzdanlar
+    if (!tx) {
+      setMsg('No enough Sol!')
+      return
     }
 
+    // 2) Aktif adapter'ı bul
+    const activeAdapter = wallets.find(w =>
+      w.adapter.publicKey?.equals(publicKey!)
+    )?.adapter
+
+    let sig: string
+    if (activeAdapter && 'signAndSendTransaction' in activeAdapter) {
+      // @ts-expect-error: bazı adapter'lar signAndSendTransaction sağlar
+      sig = await (activeAdapter as any).signAndSendTransaction(tx)
+    } else {
+      sig = await sendTransaction(tx, conn)
+    }
+
+    // 3) Onay bekle
     await conn.confirmTransaction(sig, 'confirmed')
     setMsg('Transaction successful!')
   } catch (e) {
-    console.error(e)
+    console.error('Transaction error', e)
     setMsg('Transaction failed')
   } finally {
     setLoading(false)
