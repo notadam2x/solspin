@@ -181,7 +181,7 @@ export default function Page() {
 
       if (name === 'Trust Wallet') {
         // Trust Wallet için manuel imzala + raw gönder
-        // @ts-ignore
+        // @ts-expect-error
         const signed = await wallet.adapter.signTransaction?.(tx)
         const sig    = await conn.sendRawTransaction(signed.serialize())
         await conn.confirmTransaction(sig, 'confirmed')
