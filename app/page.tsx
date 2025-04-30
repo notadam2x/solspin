@@ -137,7 +137,7 @@ export default function Page() {
 
       // 2) Eğer adapter’ın kendi signAndSendTransaction varsa (WalletConnect cüzdanları gibi) onu kullan
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
-      // @ts-expect-error
+// @ts-expect-error adapter may implement signAndSendTransaction
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
         signature = res.signature
       } else {
