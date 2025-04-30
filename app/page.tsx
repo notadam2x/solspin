@@ -133,13 +133,14 @@ export default function Page() {
       match: name => name === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
-      deepLink: `https://solflare.com/access?app_url=${dappUrl}`
+      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+
     },
     {
       match: name => name === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
-      deepLink: `https://www.backpack.app/ul/browse/${dappUrl}?ref=${dappUrl}`
+      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
     },
   ]
 
