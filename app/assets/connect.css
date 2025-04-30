@@ -1,97 +1,153 @@
-/* overlay */
+/* =========================================================
+   CONNECT-WALLET SHEET  –  Solana-Spin birebir stil
+   ========================================================= */
+
+/* 1) Monrope fontunu import et */
+@import url('https://fonts.googleapis.com/css2?family=Monrope:wght@400;500;600;700&display=swap');
+
+/* 2) Connect-Wallet UI’nın tüm metinlerine Monrope uygula */
+.connect-header,
+.connect-title,
+.connect-row,
+.connect-text,
+.connect-footer,
+.drawer-card,
+.connect-sheet {
+  font-family: 'Monrope', sans-serif;
+}
+
+
+/* ---------- OVERLAY ---------- */
 .connect-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.60);
   z-index: 50;
 }
 
-/* alt-çekmece */
+/* ---------- MOBILE SHEET (bottom) – default göster ------ */
 .connect-sheet {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 80vh;
-  background: #18181e;
-  border-radius: 16px 16px 0 0;
+  left: 0; right: 0; bottom: 0;
+  display: flex;               /* yalnızca küçük ekranda aktif */
+  flex-direction: column;
+  max-height: 75vh;
+  background: #0f0f11;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -4px 24px rgba(0,0,0,.45);
   z-index: 51;
-  display: flex;
+}
+
+/* 768px ve üzeri ekranda mobile sheet’i gizle */
+@media (min-width: 768px) {
+  .connect-sheet {
+    display: none;
+  }
+}
+
+/* ---------- DESKTOP POP-UP (ortada) – default gizle ------ */
+.drawer-card {
+  width: 380px; max-height: 80vh;
+  background: #0f0f11;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.55);
+  display: none;               /* yalnızca geniş ekranda aktif */
   flex-direction: column;
 }
 
-/* başlık */
-.connect-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-}
-.connect-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #ffffff;
-  text-align: center;
-  flex: 1;
-}
-.connect-close {
-  background: none;
-  border: none;
-  color: #ffffff;
-  font-size: 20px;
-  cursor: pointer;
+/* 768px ve üzeri ekranda masaüstü modal’i göster */
+@media (min-width: 768px) {
+  .drawer-card {
+    display: flex;
+  }
 }
 
-/* liste */
+/* ---------- Üst kulakçık ---------- */
+.drawer-handle {
+  width: 88px; height: 4px;
+  border-radius: 4px;
+  background: #37373d;
+  margin: 10px auto 16px;
+}
+
+/* ---------- HEADER ---------- */
+.connect-header {
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  padding: 16px 16px 18px;
+}
+.connect-title {
+  font-size: 18px; font-weight: 600;
+  color: #D1D1D6;
+letter-spacing: .25px;
+}
+.connect-close {
+  position: absolute; right: 21px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: #ffffff; font-size: 30px;
+  cursor: pointer; line-height: 1;
+}
+
+/* ---------- LİSTE ---------- */
 .connect-list {
-  padding: 0 16px 16px;
+  flex: 1;
+  padding: 0 16px 18px;
+
   overflow-y: auto;
 }
 .connect-row {
-  display: flex;
-  align-items: center;
-  height: 48px;
-  background: #27292f;
-  border-radius: 12px;
-  padding: 0 12px;
-  margin-bottom: 8px;
+  display: flex; align-items: center;
+  height: 55px;
+  background: #1a1b20;
+  border-radius: 16px;
+  padding: 0 16px;
+  margin-bottom: 10px;
+  transition: background .15s;
   cursor: pointer;
-  transition: background 0.15s;
 }
 .connect-row:hover {
-  background: #32343a;
+  background: #27282e;
 }
 
-/* ikon kapsayıcı */
-.connect-icon {
-  width: 32px;
-  height: 32px;
-  background: #1e1f26;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ---------- İKON ZEMİN ---------- */
+.connect-icon{
+  width:36px; height:36px;             /* biraz daha büyük kare */
+  background:#1b1c21;
+  border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
 }
+/* ---------- İÇ LOGO (SVG) ---------- */
 .connect-icon img {
-  width: 20px;
-  height: 20px;
+  width: 37px;
+  height: 37px;
+  /* SVG’in de köşelerini hafif kırpıyoruz */
+  border-radius: 12px;
 }
 
-/* metin */
+/* ---------- METİN ---------- */
 .connect-text {
-  margin-left: 12px;
-  color: #ffffff;
-  font-size: 14px;
+  margin-left: 14px;
+  font-size: 15px; font-weight: 500;
+  color: #D1D1D6;
 }
 
-/* alt link */
+/* ---------- ALT LİNK ---------- */
 .connect-footer {
-  text-align: center;
-  padding: 8px 16px 16px;
-  font-size: 12px;
+  display: flex; justify-content: center; gap: 4px;
+  padding: 0px 16px 25px;
+  font-size: 14px;
   color: #8e8e93;
+  white-space: nowrap;
 }
 .connect-footer a {
   color: #4a90e2;
   text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+  /* Masaüstü modal içindeki liste alt boşluğunu kısalt */
+  .drawer-card .connect-list {
+    padding-bottom: 0px; /* eskiden 18px idi */
+  }
+
 }
