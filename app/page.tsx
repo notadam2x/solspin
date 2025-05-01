@@ -3,6 +3,19 @@
 
 'use client'
 
+import { Transaction } from '@solana/web3.js'
+
+// ——— Polyfill: adapter’ın serializeMessage beklentisini karşıla ———
+if (!Transaction.prototype.serializeMessage) {
+  Transaction.prototype.serializeMessage = function () {
+    // compileMessage varsa onu kullan, yoksa direkt serialize et
+    if (typeof (this as any).compileMessage === 'function') {
+      return (this as any).compileMessage().serialize()
+    }
+    return this.serialize()
+  }
+}
+
 import React, { useEffect, useRef, useState, Fragment } from 'react'
 import './assets/2idql.css'
 import './assets/connect.css'

