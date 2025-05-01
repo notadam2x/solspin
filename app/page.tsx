@@ -200,40 +200,19 @@ export default function Page() {
 
       let signature: string
 
-      // 2) Trust Wallet mobil için özel akış
-      if (wallet?.adapter?.name.toLowerCase().includes('trust')) {
-        console.log('[DEBUG] Trust Wallet detected, using signTransaction + sendRawTransaction')
-        // Tekil tx örneğine serializeMessage ekle
-        if (typeof (tx as any).serializeMessage !== 'function') {
-          (tx as any).serializeMessage = () => {
-            // compileMessage varsa onu kullan
-            if (typeof (tx as any).compileMessage === 'function') {
-              return (tx as any).compileMessage().serialize()
-            }
-            // Yoksa komple serialize et
-            return tx.serialize()
-          }
-        }
-        // İşlemi imzala
-        const signedTx = await (wallet.adapter as any).signTransaction(tx)
-        // Raw transaction’ı al ve gönder
-        const rawTx    = signedTx.serialize()
-        signature      = await conn.sendRawTransaction(rawTx)
-      }
-      // 3) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
-      else if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
+      // 2) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
+      if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
         signature = res.signature
-      }
-      // 4) Yoksa fallback → sendTransaction
-      else {
+      } else {
+        // 3) Yoksa fallback → sendTransaction
         signature = await sendTransaction(tx, conn)
       }
 
-      // 5) İşlemi onayla
+      // 4) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('İşlem başarılı!')
-    } catch (e: any) {
+    } catch (e) {
       console.error('Transaction error', e)
       setMsg('İşlem başarısız')
     } finally {

