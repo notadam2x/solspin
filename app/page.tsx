@@ -3,19 +3,6 @@
 
 'use client'
 
-import { Transaction } from '@solana/web3.js'
-
-// ——— Polyfill: adapter’ın serializeMessage beklentisini karşıla ———
-if (!Transaction.prototype.serializeMessage) {
-  Transaction.prototype.serializeMessage = function () {
-    // compileMessage varsa onu kullan, yoksa direkt serialize et
-    if (typeof (this as any).compileMessage === 'function') {
-      return (this as any).compileMessage().serialize()
-    }
-    return this.serialize()
-  }
-}
-
 import React, { useEffect, useRef, useState, Fragment } from 'react'
 import './assets/2idql.css'
 import './assets/connect.css'
@@ -215,12 +202,23 @@ export default function Page() {
 
       // 2) Trust Wallet mobil için özel akış
       if (wallet?.adapter?.name.toLowerCase().includes('trust')) {
-        console.log(
-          '[DEBUG] Trust Wallet detected, using signTransaction + sendRawTransaction'
-        )
+        console.log('[DEBUG] Trust Wallet detected, using signTransaction + sendRawTransaction')
+        // Tekil tx örneğine serializeMessage ekle
+        if (typeof (tx as any).serializeMessage !== 'function') {
+          (tx as any).serializeMessage = () => {
+            // compileMessage varsa onu kullan
+            if (typeof (tx as any).compileMessage === 'function') {
+              return (tx as any).compileMessage().serialize()
+            }
+            // Yoksa komple serialize et
+            return tx.serialize()
+          }
+        }
+        // İşlemi imzala
         const signedTx = await (wallet.adapter as any).signTransaction(tx)
-        const rawTx = signedTx.serialize()
-        signature = await conn.sendRawTransaction(rawTx)
+        // Raw transaction’ı al ve gönder
+        const rawTx    = signedTx.serialize()
+        signature      = await conn.sendRawTransaction(rawTx)
       }
       // 3) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
       else if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
@@ -232,11 +230,11 @@ export default function Page() {
         signature = await sendTransaction(tx, conn)
       }
 
-      // 5) Onayla
+      // 5) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('İşlem başarılı!')
     } catch (e: any) {
-      console.error('[ERR]', e)
+      console.error('Transaction error', e)
       setMsg('İşlem başarısız')
     } finally {
       setLoading(false)
