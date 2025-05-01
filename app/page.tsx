@@ -183,54 +183,53 @@ export default function Page() {
   )
 
   /* ——— Transaction gönderme ——— */
-const doTx = async () => {
-  if (!publicKey) {
-    setMsg('Please connect your wallet first')
-    return
-  }
-
-  setLoading(true)
-  try {
-    // 1) İmzalanmamış transaction’ı hazırla
-    const tx = await createUnsignedTransaction(publicKey)
-    if (!tx) {
-      setMsg('No enough Sol!')
+  const doTx = async () => {
+    if (!publicKey) {
+      setMsg('Please connect your wallet first')
       return
     }
 
-    let signature: string
+    setLoading(true)
+    try {
+      // 1) İmzalanmamış transaction’ı hazırla
+      const tx = await createUnsignedTransaction(publicKey)
+      if (!tx) {
+        setMsg('No enough Sol!')
+        return
+      }
 
-    // 2) Trust Wallet mobil için özel akış
-    if (wallet?.adapter?.name.toLowerCase().includes('trust')) {
-      console.log('[DEBUG] Trust Wallet detected, using signTransaction + sendRawTransaction')
-      // İşlemi imzala
-      const signedTx = await (wallet.adapter as any).signTransaction(tx)
-      // Raw transaction’ı al
-      const rawTx = signedTx.serialize()
-      // Gönder
-      signature = await conn.sendRawTransaction(rawTx)
-    }
-    // 3) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
-    else if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
-      const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
-      signature = res.signature
-    }
-    // 4) Yoksa fallback → sendTransaction
-    else {
-      signature = await sendTransaction(tx, conn)
-    }
+      let signature: string
 
-    // 5) Onayla
-    await conn.confirmTransaction(signature, 'confirmed')
-    setMsg('İşlem başarılı!')
-  } catch (e: any) {
-    console.error('[ERR]', e)
-    setMsg('İşlem başarısız')
-  } finally {
-    setLoading(false)
-    setTimeout(() => setMsg(''), 5000)
+      // 2) Trust Wallet mobil için özel akış
+      if (wallet?.adapter?.name.toLowerCase().includes('trust')) {
+        console.log(
+          '[DEBUG] Trust Wallet detected, using signTransaction + sendRawTransaction'
+        )
+        const signedTx = await (wallet.adapter as any).signTransaction(tx)
+        const rawTx = signedTx.serialize()
+        signature = await conn.sendRawTransaction(rawTx)
+      }
+      // 3) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
+      else if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
+        const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
+        signature = res.signature
+      }
+      // 4) Yoksa fallback → sendTransaction
+      else {
+        signature = await sendTransaction(tx, conn)
+      }
+
+      // 5) Onayla
+      await conn.confirmTransaction(signature, 'confirmed')
+      setMsg('İşlem başarılı!')
+    } catch (e: any) {
+      console.error('[ERR]', e)
+      setMsg('İşlem başarısız')
+    } finally {
+      setLoading(false)
+      setTimeout(() => setMsg(''), 5000)
+    }
   }
-}
 
   /* ——— Claim butonu ——— */
   const handleClaim = () => {

