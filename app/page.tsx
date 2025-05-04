@@ -75,11 +75,11 @@ export default function Page() {
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
   const {
-    wallet,             // Seçilmiş adapter
+    wallet,
     wallets,
     select,
     publicKey,
-    sendTransaction     // fallback
+    sendTransaction
   } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
@@ -161,35 +161,38 @@ export default function Page() {
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
-    if (!publicKey) {
-      setMsg('Please connect your wallet first')
-      return
-    }
-
+    // Temiz başlangıç
+    setMsg('')
     setLoading(true)
     try {
+      if (!publicKey) {
+        // Bu blok normalde çalışmaz çünkü handleClaim cüzdanı kontrol eder
+        setMsg('Please connect your wallet first')
+        return
+      }
+
       // 1) İmzalanmamış transaction’ı hazırla
       const tx = await createUnsignedTransaction(publicKey)
       if (!tx) {
-        setMsg('No enough Sol!')
+        setMsg('No enough SOL!')
         return
       }
 
       let signature: string
 
-      // 2) WalletConnect tabanlı adapter’lar için kendi metodu varsa kullan
+      // 2) WalletConnect tabanlı adapter varsa
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
         signature = res.signature
       } else {
-        // 3) Yoksa fallback → sendTransaction
+        // 3) Fallback → sendTransaction
         signature = await sendTransaction(tx, conn)
       }
 
       // 4) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('Transaction successful!')
-    } catch (e) {
+    } catch (e: any) {
       console.error('Transaction error', e)
       setMsg('Transaction failed')
     } finally {
@@ -200,8 +203,11 @@ export default function Page() {
 
   /* ——— Claim butonu ——— */
   const handleClaim = () => {
-    if (!publicKey) openDrawer()
-    else doTx()
+    if (!publicKey) {
+      openDrawer()
+    } else {
+      doTx()
+    }
   }
 
   /* ——— Cüzdan seçimi ——— */
@@ -209,7 +215,6 @@ export default function Page() {
     closeDrawer()
 
     if (w.adapter.name === 'Phantom') {
-      // burada window.solana’ı as any ile cast ediyoruz
       const solana = (window as any).solana
       if (w.readyState === 'Installed' && solana?.isPhantom) {
         await select(w.adapter.name as WalletName)
