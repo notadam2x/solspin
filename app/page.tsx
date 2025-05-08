@@ -45,7 +45,7 @@ export default function Page() {
   }, [])
 
 
-/* Pagecomponentinin en üstüne – diğer useEffect’lerin altına ekle */
+/* telegram harici aşağı scroll */
 useEffect(() => {
   // Telegram Mini‑App’te miyiz?
   const inTelegram =
@@ -58,7 +58,7 @@ useEffect(() => {
     const w = window.innerWidth
     if (w >= 320 && w <= 499) {
       // ‘smooth’kullanmadım; isterseniz ekleyebilirsiniz
-      window.scrollTo({ top: 50 })
+      window.scrollTo({ top: 70 })
     }
   }
 }, [])
