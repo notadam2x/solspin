@@ -44,6 +44,18 @@ export default function Page() {
     }
   }, [])
 
+
+    /* ——— Dinamik üst boşluk durumu ——— */
+  const [topOffset, setTopOffset] = useState<string>('20px')
+  useEffect(() => {
+    const isTelegram = !!(window as any).Telegram?.WebApp
+    const w = window.innerWidth
+    if (!isTelegram && w >= 320 && w <= 499) {
+      setTopOffset('8px')
+    }
+  }, [])
+
+
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
@@ -284,7 +296,7 @@ export default function Page() {
 
           {/* ---------- HEADER ---------- */}
           <section className="_b">
-            <div className="_d">
+            <div className="_d" style={{ paddingTop: topOffset }}>
               <div className="_x">
                 <div className="_0">
                   <a href="#!" className="_h">
