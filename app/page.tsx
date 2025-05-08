@@ -8,12 +8,10 @@ import './assets/2idql.css'
 import './assets/connect.css'
 import { Transition } from '@headlessui/react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import type {
-  WalletAdapter,
-  WalletReadyState,
-  WalletName,
-} from '@solana/wallet-adapter-base'
+import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
+
 
 // ——— Telegram WebApp tipi ———
 interface TgWebApp {
