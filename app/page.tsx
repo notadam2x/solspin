@@ -45,6 +45,14 @@ export default function Page() {
   }, [])
 
 
+// page.tsx içindeki hook’lar arasında:
+const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
+
+useEffect(() => {
+  // Telegram JS kitaplığının initData’sı yalnızca WebApp içinde gelir
+  const initData = (window as any).Telegram?.WebApp?.initData
+  setIsTelegramWebApp(Boolean(initData))
+}, [])
 
 
   /* ——— Çark (spin) durumu ——— */
@@ -290,8 +298,8 @@ export default function Page() {
   <div
     className="_d"
     style={
-      // Sadece Telegram WebApp içinde değilsek ve 320–499px arasındaysak 8px boşluk uygula
-      !window.Telegram?.WebApp?.initData &&
+      // Telegram WebApp içinde değilsek ve 320–499px arasındaysak
+      !isTelegramWebApp &&
       window.innerWidth >= 320 &&
       window.innerWidth <= 499
         ? { paddingTop: '8px' }
@@ -334,7 +342,6 @@ export default function Page() {
     </div>
   </div>
 </section>
-
 
 
           {/* ---------- MAIN SECTION ---------- */}
