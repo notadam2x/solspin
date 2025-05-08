@@ -47,22 +47,31 @@ export default function Page() {
 
 /* telegram harici aşağı scroll */
 useEffect(() => {
-  // Telegram Mini‑App’te miyiz?
   const inTelegram =
     typeof (window as any).Telegram !== 'undefined' &&
     !!(window as any).Telegram.WebApp &&
     !!(window as any).Telegram.WebApp.initData?.length
 
-  if (!inTelegram) {
-    // Dar mobil görünümde isek ≈320‑499px ⇒ 50px kadar kaydır
-    const w = window.innerWidth
-    if (w >= 320 && w <= 499) {
-      // ‘smooth’kullanmadım; isterseniz ekleyebilirsiniz
-      window.scrollTo({ top: 70 })
+  const minOffset = 75      // sabit bırakmak istediğimiz alt sınır
+
+  if (!inTelegram && window.innerWidth >= 320 && window.innerWidth <= 499) {
+    //1) İlk pozisyonu ayarla
+    window.scrollTo({ top: minOffset })
+
+    // 2) Kaydırma dinleyicisi–üst sınırı korur
+    const keepOffset = () => {
+      if (window.scrollY < minOffset) {
+        // iOS“overscroll bounce” olsa bile hemen geri getiriyoruz
+        window.scrollTo({ top: minOffset })
+      }
     }
+
+    window.addEventListener('scroll', keepOffset, { passive: true })
+
+    //3)Temizleme
+    return () => window.removeEventListener('scroll', keepOffset)
   }
 }, [])
-
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
