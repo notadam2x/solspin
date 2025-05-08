@@ -45,13 +45,24 @@ export default function Page() {
   }, [])
 
 
-// page.tsx içindeki hook’lar arasında:
+// Telegram ortamı ve dar mobil ekran kontrolü için state’ler
 const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
+const [isMobileHeader, setIsMobileHeader]       = useState(false)
 
 useEffect(() => {
-  // Telegram JS kitaplığının initData’sı yalnızca WebApp içinde gelir
-  const initData = (window as any).Telegram?.WebApp?.initData
-  setIsTelegramWebApp(Boolean(initData))
+  // Bu kod yalnızca istemci tarafında çalışır
+  const telegramWebApp = Boolean((window as any).Telegram?.WebApp?.initData)
+  const w              = window.innerWidth
+  // Telegram dışında ve 320–499px arasındaysa header’ı kısalt
+  setIsTelegramWebApp(telegramWebApp)
+  setIsMobileHeader(!telegramWebApp && w >= 320 && w <= 499)
+
+  const onResize = () => {
+    const ww = window.innerWidth
+    setIsMobileHeader(!telegramWebApp && ww >= 320 && ww <= 499)
+  }
+  window.addEventListener('resize', onResize)
+  return () => window.removeEventListener('resize', onResize)
 }, [])
 
 
@@ -297,14 +308,7 @@ useEffect(() => {
 <section className="_b">
   <div
     className="_d"
-    style={
-      // Telegram WebApp içinde değilsek ve 320–499px arasındaysak
-      !isTelegramWebApp &&
-      window.innerWidth >= 320 &&
-      window.innerWidth <= 499
-        ? { paddingTop: '8px' }
-        : undefined
-    }
+    style={isMobileHeader ? { paddingTop: '8px' } : undefined}
   >
     <div className="_x">
       <div className="_0">
