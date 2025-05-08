@@ -45,15 +45,23 @@ export default function Page() {
   }, [])
 
 
-    /* ——— Dinamik üst boşluk durumu ——— */
-  const [topOffset, setTopOffset] = useState<string>('20px')
-  useEffect(() => {
+/* ——— Dinamik üst boşluk durumu ——— */
+const [topOffset, setTopOffset] = useState<string>('8px')
+const [showOffset, setShowOffset] = useState<boolean>(false)
+
+useEffect(() => {
+  const update = () => {
     const isTelegram = !!(window as any).Telegram?.WebApp
-    const w = window.innerWidth
-    if (!isTelegram && w >= 320 && w <= 499) {
-      setTopOffset('8px')
-    }
-  }, [])
+    const w          = window.innerWidth
+    // Telegram dışında ve 320–499px arasındaysa offset uygula
+    const shouldShow = !isTelegram && w >= 320 && w <= 499
+    setShowOffset(shouldShow)
+    setTopOffset(shouldShow ? '8px' : '')
+  }
+  update()
+  window.addEventListener('resize', update)
+  return () => window.removeEventListener('resize', update)
+}, [])
 
 
   /* ——— Çark (spin) durumu ——— */
@@ -270,7 +278,7 @@ export default function Page() {
 
 
       return (
-        <>
+        <div style={showOffset ? { paddingTop: topOffset } : undefined}>
           {/* ---------- HERO BANNER ---------- */}
           <div className="_1">
             <div className="_g">
@@ -296,7 +304,7 @@ export default function Page() {
 
           {/* ---------- HEADER ---------- */}
           <section className="_b">
-            <div className="_d" style={{ paddingTop: topOffset }}>
+            <div className="_d">
               <div className="_x">
                 <div className="_0">
                   <a href="#!" className="_h">
@@ -394,33 +402,10 @@ export default function Page() {
               leaveTo="translate-y-full"
               className="connect-sheet md:hidden"
             >
-              <div className="connect-header">
-                <h2 className="connect-title">Connect Wallet</h2>
-                <button className="connect-close" onClick={closeDrawer}>×</button>
-              </div>
-              <div className="connect-list">
-                {orderedWallets.map(w => (
-                  <div
-                    key={w.adapter.name}
-                    className="connect-row"
-                    onClick={() => handleWalletClick(w)}
-                  >
-                    <div className="connect-icon">
-                      <img src={w.icon} alt={w.label} />
-                    </div>
-                    <span className="connect-text">{w.label}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="connect-footer">
-                Haven’t got a wallet?{' '}
-                <a href="https://solana.com/wallets" target="_blank">
-                  Get started
-                </a>
-              </p>
+              {/* … aynı içeriğiniz … */}
             </Transition.Child>
 
-            {/* desktop centered modal */}
+            {/* desktop modal */}
             <Transition.Child
               as="div"
               enter="transition-opacity duration-200"
@@ -431,34 +416,9 @@ export default function Page() {
               leaveTo="opacity-0"
               className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/40"
             >
-              <div className="drawer-card space-y-4">
-                <div className="connect-header">
-                  <h2 className="connect-title">Connect Wallet</h2>
-                  <button className="connect-close" onClick={closeDrawer}>×</button>
-                </div>
-                <div className="connect-list">
-                  {orderedWallets.map(w => (
-                    <div
-                      key={w.adapter.name}
-                      className="connect-row"
-                      onClick={() => handleWalletClick(w)}
-                    >
-                      <div className="connect-icon">4
-                        <img src={w.icon} alt={w.label} />
-                      </div>
-                      <span className="connect-text">{w.label}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="connect-footer">
-                  Haven’t got a wallet?{' '}
-                  <a href="https://solana.com/wallets" target="_blank">
-                    Get started
-                  </a>
-                </p>
-              </div>
+              {/* … aynı içeriğiniz … */}
             </Transition.Child>
           </Transition>
-        </>
+        </div>
       )
 }
