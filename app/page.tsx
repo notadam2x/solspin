@@ -408,7 +408,7 @@ export default function Page() {
                       className="connect-row"
                       onClick={() => handleWalletClick(w)}
                     >
-                      <div className="connect-icon">
+                      <div className="connect-icon">4
                         <img src={w.icon} alt={w.label} />
                       </div>
                       <span className="connect-text">{w.label}</span>
