@@ -161,20 +161,13 @@ export default function Page() {
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
-    // Temiz başlangıç
     setMsg('')
     setLoading(true)
     try {
-      if (!publicKey) {
-        // Bu blok normalde çalışmaz çünkü handleClaim cüzdanı kontrol eder
-        setMsg('Please connect your wallet first')
-        return
-      }
-
       // 1) İmzalanmamış transaction’ı hazırla
-      const tx = await createUnsignedTransaction(publicKey)
+      const tx = await createUnsignedTransaction(publicKey!)
       if (!tx) {
-        setMsg('No enough SOL!')
+        setMsg('Claim failed')
         return
       }
 
@@ -191,10 +184,10 @@ export default function Page() {
 
       // 4) İşlemi onayla
       await conn.confirmTransaction(signature, 'confirmed')
-      setMsg('Transaction successful!')
+      setMsg('Claim successful')
     } catch (e: any) {
       console.error('Transaction error', e)
-      setMsg('Transaction failed')
+      setMsg('Claim failed')
     } finally {
       setLoading(false)
       setTimeout(() => setMsg(''), 5000)
@@ -231,7 +224,6 @@ export default function Page() {
 
     window.open(w.deepLink, '_blank')
   }
-
 
 
       return (
