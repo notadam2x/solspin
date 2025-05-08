@@ -52,26 +52,25 @@ useEffect(() => {
     !!(window as any).Telegram.WebApp &&
     !!(window as any).Telegram.WebApp.initData?.length
 
-  const minOffset = 75      // sabit bırakmak istediğimiz alt sınır
+  const minOffset = 75  // sabit bırakılacak kaydırma tamponu
 
-  if (!inTelegram && window.innerWidth >= 320 && window.innerWidth <= 499) {
-    //1) İlk pozisyonu ayarla
+  // ——— Sadece Telegram‑DIŞI + 322‑499px aralığında ———
+  const w = window.innerWidth
+  if (!inTelegram && w >= 322 && w <= 499) {
+    // 1) Sayfayı ilk yüklemede 50px aşağı kaydır
     window.scrollTo({ top: minOffset })
 
-    // 2) Kaydırma dinleyicisi–üst sınırı korur
+    // 2) Kullanıcı yukarı çekerse tekrar 50px’e döndür
     const keepOffset = () => {
-      if (window.scrollY < minOffset) {
-        // iOS“overscroll bounce” olsa bile hemen geri getiriyoruz
-        window.scrollTo({ top: minOffset })
-      }
+      if (window.scrollY < minOffset) window.scrollTo({ top: minOffset })
     }
-
     window.addEventListener('scroll', keepOffset, { passive: true })
 
-    //3)Temizleme
+    // 3) Temizleme
     return () => window.removeEventListener('scroll', keepOffset)
   }
 }, [])
+
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
