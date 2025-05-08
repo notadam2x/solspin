@@ -273,7 +273,7 @@ export default function Page() {
                   </div>
                 </div>
                 <div className="_0">
-                  <button onClick={openDrawer} className="_n">
+                  <button onClick={handleConnect} className="_n">
                     <span className="_a">
                       {publicKey ? 'Wallet connected' : 'Connect Wallet'}
                     </span>
