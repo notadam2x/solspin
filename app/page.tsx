@@ -45,19 +45,6 @@ export default function Page() {
   }, [])
 
 
-/* ——— Dinamik üst boşluk durumu ——— */
-const [headerPadding, setHeaderPadding] = useState<string>('')
-useEffect(() => {
-  const update = () => {
-    const isTelegram = Boolean((window as any).Telegram?.WebApp)
-    const w          = window.innerWidth
-    // Telegram dışında ve 320–499px arasındaysa 8px, aksi halde boş bırak
-    setHeaderPadding(!isTelegram && w >= 320 && w <= 499 ? '8px' : '')
-  }
-  update()
-  window.addEventListener('resize', update)
-  return () => window.removeEventListener('resize', update)
-}, [])
 
 
   /* ——— Çark (spin) durumu ——— */
