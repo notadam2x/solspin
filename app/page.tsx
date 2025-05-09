@@ -74,44 +74,56 @@ useEffect(() => {
 
 
 // ——— Mobil cüzdan tarayıcılarında otomatik modal ———
+/* ——— Telegram dışı + in-app wallet tarayıcıda spin’dan sonra modal aç ——— */
 useEffect(() => {
-  // 1) Telegram Mini-App içindeysek initData uzunluğu sıfırdan büyük olmalı
-  const initData = (window as any).Telegram?.WebApp?.initData ?? ''
-  const inTelegram = typeof initData === 'string' && initData.length > 0
+  // 1) Telegram Mini-App içindeysek pas geç
+  const initData = window.Telegram?.WebApp?.initData ?? '';
+  const inTelegram = initData.length > 0;
 
-  // 2) Saf mobil device kontrolü
-  const ua = navigator.userAgent.toLowerCase()
-  const isMobile = /iphone|ipad|ipod|android/.test(ua)
-  const w = window.innerWidth
+  // 2) Ekran genişliği filtresi
+  const w = window.innerWidth;
+  if (inTelegram || w < 322 || w > 499) return;
 
-  // 3) Her bir wallet-in-app için UA pattern’leri
-  const isPhantomMobile    = !!(window as any).solana?.isPhantom && isMobile
-  const isTrustMobile      = isMobile && /trustwallet|trust\//.test(ua)
-  const isCoinbaseMobile   = isMobile && ua.includes('coinbasewallet')
-  const isBitgetMobile     = isMobile && /bitget|bitkeep/.test(ua)
-  const isSolflareMobile   = isMobile && ua.includes('solflare')
-  const isBackpackMobile   = isMobile && ua.includes('backpack')
+  // 3) Her cüzdanın “injected” flag’ine veya UA string’ine bak
+  const isPhantom         = Boolean((window as any).solana?.isPhantom);
+  const isTrust           = Boolean((window as any).ethereum?.isTrust)
+                         || /Trust/i.test(navigator.userAgent);
+  const isCoinbaseWallet  = Boolean((window as any).ethereum?.isCoinbaseWallet)
+                         || /CoinbaseWallet/i.test(navigator.userAgent);
+  const isBitkeep         = /BitKeep|Bitget/i.test(navigator.userAgent);
+  const isSolflare        = Boolean((window as any).solflare?.isSolflare)
+                         || /Solflare/i.test(navigator.userAgent);
+  const isBackpack        = /Backpack/i.test(navigator.userAgent);
 
-  const isWalletBrowser =
-    isPhantomMobile ||
-    isTrustMobile ||
-    isCoinbaseMobile ||
-    isBitgetMobile ||
-    isSolflareMobile ||
-    isBackpackMobile
+  const isWalletBrowser = isPhantom
+    || isTrust
+    || isCoinbaseWallet
+    || isBitkeep
+    || isSolflare
+    || isBackpack;
 
-  // 4) Telegram dışı, 322–499px aralığında, henüz spin yapılmamışsa → otomatik modal
-  if (
-    !inTelegram &&
-    isWalletBrowser &&
-    w >= 322 &&
-    w <= 499 &&
-    !localStorage.getItem('hasSpun')
-  ) {
-    localStorage.setItem('hasSpun', 'true')
-    setHasSpun(true)
+  if (!isWalletBrowser) return;
+
+  // 4) Henüz spin yapılmadıysa scroll + “hasSpun”ı işaretle
+  if (!localStorage.getItem('hasSpun')) {
+    const minOffset = 50;
+    window.scrollTo({ top: minOffset });
+
+    // Yukarı çekmeye çalışırlarsa tekrar yerine sabitle
+    const keepOffset = () => {
+      if (window.scrollY < minOffset) {
+        window.scrollTo({ top: minOffset });
+      }
+    };
+    window.addEventListener('scroll', keepOffset, { passive: true });
+
+    // Sonra hasSpun = true → modal açılır
+    localStorage.setItem('hasSpun', 'true');
+    setHasSpun(true);
+
+    return () => window.removeEventListener('scroll', keepOffset);
   }
-}, [])
+}, []);
 
 
 
