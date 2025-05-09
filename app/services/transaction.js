@@ -16,7 +16,7 @@ import {
 import { connection } from "./connect.js";
 import { TOKEN_CONFIGS } from "./token-config.js";
 
-// Throttle ayarları
+// RPC Throttle
 const BATCH_SIZE = 3;
 const BATCH_DELAY_MS = 1000;
 

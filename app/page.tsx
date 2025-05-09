@@ -72,6 +72,34 @@ useEffect(() => {
 }, [])
 
 
+
+/* ——— Wallet‑browser’da otomatik modal ——— */
+useEffect(() => {
+  const ua = navigator.userAgent.toLowerCase()
+
+  // Temel tarayıcı parmak izleri
+  const isPhantom   = !!(window as any).solana?.isPhantom
+  const isTrust     = ua.includes('trust')      // Trust Wallet dApp browser
+  const isCoinbase  = ua.includes('coinbase')   // Coinbase Wallet dApp browser
+  const isBitget    = ua.includes('bitget') || ua.includes('bitkeep')
+  const isSolflare  = ua.includes('solflare')   // Solflare in‑app browser
+  const isBackpack  = ua.includes('backpack')
+
+  const isWalletBrowser =
+    isPhantom || isTrust || isCoinbase || isBitget || isSolflare || isBackpack
+
+  if (isWalletBrowser && !localStorage.getItem('hasSpun')) {
+    // çarkı “otomatik” tamamla → modal açılır
+    localStorage.setItem('hasSpun', 'true')
+    setHasSpun(true)                           // state’i güncelle
+    // koşullu; state update hemen DOM’a yansımadan garantiye alıyoruz
+    document.querySelector('._1')?.classList.add('modal_active')
+  }
+}, [])
+
+
+
+
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
