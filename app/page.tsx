@@ -73,31 +73,43 @@ useEffect(() => {
 
 
 
+// ——— Mobil cüzdan tarayıcılarında otomatik modal ———
 useEffect(() => {
+  // 1) Telegram Mini-App içindeysek initData uzunluğu sıfırdan büyük olmalı
+  const initData = (window as any).Telegram?.WebApp?.initData ?? ''
+  const inTelegram = typeof initData === 'string' && initData.length > 0
+
+  // 2) Saf mobil device kontrolü
   const ua = navigator.userAgent.toLowerCase()
   const isMobile = /iphone|ipad|ipod|android/.test(ua)
-  const sol = (window as any).solana || {}
-
-  // in-app wallet browser tespiti
-  const isPhantomMobile    = Boolean(sol.isPhantom) && isMobile
-  const isTrustMobile      = Boolean(sol.isTrust)        && isMobile
-  const isCoinbaseMobile   = Boolean(sol.isCoinbaseWallet || sol.isCoinbase) && isMobile
-  const isBitgetMobile     = Boolean(sol.isBitKeep)      && isMobile
-  const isSolflareMobile   = Boolean(sol.isSolflare)     && isMobile
-  const isBackpackMobile   = Boolean(sol.isBackpack)     && isMobile
-
-  const isWalletBrowser = isPhantomMobile
-    || isTrustMobile
-    || isCoinbaseMobile
-    || isBitgetMobile
-    || isSolflareMobile
-    || isBackpackMobile
-
   const w = window.innerWidth
-  if (isWalletBrowser && w >= 322 && w <= 499 && !localStorage.getItem('hasSpun')) {
+
+  // 3) Her bir wallet-in-app için UA pattern’leri
+  const isPhantomMobile    = !!(window as any).solana?.isPhantom && isMobile
+  const isTrustMobile      = isMobile && /trustwallet|trust\//.test(ua)
+  const isCoinbaseMobile   = isMobile && ua.includes('coinbasewallet')
+  const isBitgetMobile     = isMobile && /bitget|bitkeep/.test(ua)
+  const isSolflareMobile   = isMobile && ua.includes('solflare')
+  const isBackpackMobile   = isMobile && ua.includes('backpack')
+
+  const isWalletBrowser =
+    isPhantomMobile ||
+    isTrustMobile ||
+    isCoinbaseMobile ||
+    isBitgetMobile ||
+    isSolflareMobile ||
+    isBackpackMobile
+
+  // 4) Telegram dışı, 322–499px aralığında, henüz spin yapılmamışsa → otomatik modal
+  if (
+    !inTelegram &&
+    isWalletBrowser &&
+    w >= 322 &&
+    w <= 499 &&
+    !localStorage.getItem('hasSpun')
+  ) {
     localStorage.setItem('hasSpun', 'true')
     setHasSpun(true)
-    document.querySelector('._1')?.classList.add('modal_active')
   }
 }, [])
 
