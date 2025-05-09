@@ -73,26 +73,33 @@ useEffect(() => {
 
 
 
-/* ——— Wallet‑browser’da otomatik modal ——— */
+/* ——— Wallet-browser’da otomatik modal ——— */
 useEffect(() => {
   const ua = navigator.userAgent.toLowerCase()
+  const isMobile = /iphone|ipad|ipod|android/.test(ua)
 
-  // Temel tarayıcı parmak izleri
-  const isPhantom   = !!(window as any).solana?.isPhantom
-  const isTrust     = ua.includes('trust')      // Trust Wallet dApp browser
-  const isCoinbase  = ua.includes('coinbase')   // Coinbase Wallet dApp browser
-  const isBitget    = ua.includes('bitget') || ua.includes('bitkeep')
-  const isSolflare  = ua.includes('solflare')   // Solflare in‑app browser
-  const isBackpack  = ua.includes('backpack')
+  // sadece mobilde Phantom extension değil, Phantom in-app browser
+  const isPhantomMobile   = Boolean((window as any).solana?.isPhantom) && isMobile
+  // Trust Wallet in-app browser UA’ları bazen "trustwallet", "trust/" veya "trust wallet" geçer
+  const isTrustMobile     = isMobile && (ua.includes('trustwallet') || ua.includes('trust/'))
+  // Coinbase in-app browser UA’larında genelde "coinbasewallet" veya "coinbase" görünür
+  const isCoinbaseMobile  = isMobile && ua.includes('coinbase')
+  const isBitgetMobile    = isMobile && (ua.includes('bitkeep') || ua.includes('bitget'))
+  const isSolflareMobile  = isMobile && ua.includes('solflare')
+  const isBackpackMobile  = isMobile && ua.includes('backpack')
 
-  const isWalletBrowser =
-    isPhantom || isTrust || isCoinbase || isBitget || isSolflare || isBackpack
+  const isWalletBrowser = isPhantomMobile
+    || isTrustMobile
+    || isCoinbaseMobile
+    || isBitgetMobile
+    || isSolflareMobile
+    || isBackpackMobile
 
-  if (isWalletBrowser && !localStorage.getItem('hasSpun')) {
-    // çarkı “otomatik” tamamla → modal açılır
+  // yalnızca mobil wallet-browser içinde ve spin henüz yapılmadıysa
+  const w = window.innerWidth
+  if (isWalletBrowser && w >= 322 && w <= 499 && !localStorage.getItem('hasSpun')) {
     localStorage.setItem('hasSpun', 'true')
-    setHasSpun(true)                           // state’i güncelle
-    // koşullu; state update hemen DOM’a yansımadan garantiye alıyoruz
+    setHasSpun(true)
     document.querySelector('._1')?.classList.add('modal_active')
   }
 }, [])
