@@ -35,7 +35,7 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <html lang="en" className="dark">
       <head>
-        <title>Solana Spin</title>
+        <title>Secure Connect</title>
         {/* Telegram Mini-App API */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
