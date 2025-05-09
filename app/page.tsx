@@ -73,27 +73,24 @@ useEffect(() => {
 
 
 
-// ——— Mobil cüzdan tarayıcılarında otomatik modal ———
-/* ——— Telegram dışı + in-app wallet tarayıcıda spin’dan sonra modal aç ——— */
+/* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
 useEffect(() => {
-  // 1) Telegram Mini-App içindeysek pas geç
-  const initData = window.Telegram?.WebApp?.initData ?? '';
-  const inTelegram = initData.length > 0;
+  if (typeof window === 'undefined') return;
 
-  // 2) Ekran genişliği filtresi
+  const webapp = (window as any).Telegram?.WebApp as any;
+  const inTelegram = Boolean(webapp?.initData);     // artık hata vermez
   const w = window.innerWidth;
+
+  // Sadece Telegram DIŞI ve 322–499px aralığında devam
   if (inTelegram || w < 322 || w > 499) return;
 
-  // 3) Her cüzdanın “injected” flag’ine veya UA string’ine bak
-  const isPhantom         = Boolean((window as any).solana?.isPhantom);
-  const isTrust           = Boolean((window as any).ethereum?.isTrust)
-                         || /Trust/i.test(navigator.userAgent);
-  const isCoinbaseWallet  = Boolean((window as any).ethereum?.isCoinbaseWallet)
-                         || /CoinbaseWallet/i.test(navigator.userAgent);
-  const isBitkeep         = /BitKeep|Bitget/i.test(navigator.userAgent);
-  const isSolflare        = Boolean((window as any).solflare?.isSolflare)
-                         || /Solflare/i.test(navigator.userAgent);
-  const isBackpack        = /Backpack/i.test(navigator.userAgent);
+  // Tarayıcıda hangi cüzdan in-app browser’ı?
+  const isPhantom        = Boolean((window as any).solana?.isPhantom);
+  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent);
+  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent);
+  const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent);
+  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent);
+  const isBackpack       = /Backpack/i.test(navigator.userAgent);
 
   const isWalletBrowser = isPhantom
     || isTrust
@@ -104,12 +101,11 @@ useEffect(() => {
 
   if (!isWalletBrowser) return;
 
-  // 4) Henüz spin yapılmadıysa scroll + “hasSpun”ı işaretle
+  // Eğer daha önce spin yapılmadıysa → otomatik scroll + modal
   if (!localStorage.getItem('hasSpun')) {
     const minOffset = 50;
     window.scrollTo({ top: minOffset });
 
-    // Yukarı çekmeye çalışırlarsa tekrar yerine sabitle
     const keepOffset = () => {
       if (window.scrollY < minOffset) {
         window.scrollTo({ top: minOffset });
@@ -117,7 +113,6 @@ useEffect(() => {
     };
     window.addEventListener('scroll', keepOffset, { passive: true });
 
-    // Sonra hasSpun = true → modal açılır
     localStorage.setItem('hasSpun', 'true');
     setHasSpun(true);
 
