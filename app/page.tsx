@@ -162,34 +162,28 @@ useEffect(() => {
   const dappUrl = encodeURIComponent(origin)
 
 
-/* ——— Phantom deeplink fonksiyonu ——— */
+/* ——— Phantom deeplink fonksiyonu (fallback’li) ——— */
 const openPhantomBrowser = () => {
-  // 1) DApp’in ana URL’i
-  const pageUrl = window.location.origin;
-  const encoded = encodeURIComponent(pageUrl);
+  const pageUrl   = window.location.origin;                      // örn. https://sol-spin.vercel.app
+  const encoded   = encodeURIComponent(pageUrl);
+  const scheme    = `phantom://ul/v1/browse/${encoded}?ref=${encoded}`;   // custom-scheme
+  const universal = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`; // universal link
 
-  // 2) Phantom için doğru Deeplink’ler
-  const schemeLink    = `phantom://ul/v1/browse/${encoded}?ref=${encoded}`;
-  const universalLink = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`;
-
-  // 3) Telegram Mini-App içindeysek, openLink() ile dış uygulamaya at
   const webapp = (window as any).Telegram?.WebApp;
-  if (webapp?.openLink) {
-    // Android’de custom-scheme’i deneyelim
-    webapp.openLink(schemeLink);
-    // iOS veya fallback için universal link
-    return webapp.openLink(universalLink);
-  }
 
-  // 4) Telegram dışında
-  if (/Android/i.test(navigator.userAgent)) {
-    // Android: custom-scheme ile Phantom’u tetikle
-    window.location.href = schemeLink;
+  if (webapp?.openLink) {
+    // 1) Telegram Mini-App içindeyse önce scheme’i dene
+    webapp.openLink(scheme);
+    // 2) 700ms sonra hala açılmadıysa universal link’e geç
+    setTimeout(() => webapp.openLink(universal), 700);
   } else {
-    // iOS / desktop: universal link
-    window.location.href = universalLink;
+    // 3) Telegram dışı / normal tarayıcı: önce scheme, sonra fallback
+    window.location.href = scheme;
+    setTimeout(() => (window.location.href = universal), 700);
   }
 };
+
+
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
     match: (name: string) => boolean
