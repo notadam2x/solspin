@@ -314,35 +314,45 @@ useEffect(() => {
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer();
 
-  // Phantom seçildiyse…
+  // Phantom seçildiyse
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
-    // 1) SDK/yüklü eklenti ise normal akış
+    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select('Phantom' as WalletName);
       return doTx();
     }
 
-    // 2) Platform & Telegram-in-app kontrolü
-    const fullUrl     = window.location.href;
+    // 2) Aksi halde platform + Telegram kontrolü
+    const fullUrl      = window.location.href;
+    const encodedFull  = encodeURIComponent(fullUrl);
+
+    // Android + Telegram içindeysek → önce Chrome’u açacak Intent URI
     const hostAndPath = fullUrl.replace(/^https?:\/\//, '');
     const intentUrl   =
       `intent://${hostAndPath}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
-    const universalUrl =
-      `https://phantom.app/ul/browse/${encodeURIComponent(fullUrl)}?ref=${encodeURIComponent(fullUrl)}`;
 
-    if (isTelegramInApp) {
-      // Android-Telegram Mini App içindeysek → Chrome’a atıyoruz
+    // Diğer tüm durumlar için Phantom Universal Link
+    const phantomUrl  =
+      `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`;
+
+    const webapp     = (window as any).Telegram?.WebApp;
+    const inTelegram = Boolean(webapp?.initData);
+    const isAndroid  = /Android/i.test(navigator.userAgent);
+
+    if (isAndroid && inTelegram) {
+      // MUTLAK user-gesture içinde <a>.click() hack’i
       const a = document.createElement('a');
       a.href   = intentUrl;
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
+      // Temizle
       setTimeout(() => a.remove(), 1000);
     } else {
-      // Diğer tüm durumlar (Chrome’da normal tarayıcı, iOS, desktop) → Phantom’a geç
-      window.location.href = universalUrl;
+      // iOS veya masaüstü veya normal mobil tarayıcıda direkt Phantom’a geç
+      window.location.href = phantomUrl;
     }
 
     return;
@@ -353,8 +363,11 @@ const handleWalletClick = async (w: DrawerWallet) => {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
+
+  // Hiçbiri yüklü değilse fallback deeplink
   window.open(w.deepLink, '_blank');
 };
+
       return (
         <>
           {/* ---------- HERO BANNER ---------- */}
