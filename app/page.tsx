@@ -163,20 +163,29 @@ useEffect(() => {
 
 /* ——— Phantom deeplink fonksiyonu ——— */
 const openPhantomBrowser = (): void => {
-  // Universal Link
-  const phantomWebUrl = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`;
-  // Android Intent URI → Chrome'u açıp oradan Phantom'ı tetikle
+  // 1) Tam sayfa URL’inizi encode edin
+  const pageUrl     = window.location.href;
+  const encoded     = encodeURIComponent(pageUrl);
+
+  // 2) Universal Link (HTTPS)
+  const phantomWebUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+  // 3) Android Intent URI (Chrome’u zorla açar)
   const intentUrl =
     `intent://${phantomWebUrl.replace(/^https?:\/\//, '')}` +
     `#Intent;scheme=https;package=com.android.chrome;end`;
 
-  if (/Android/i.test(navigator.userAgent)) {
-    // Android: önce Chrome, sonra Phantom
-    window.location.href = intentUrl;
-  } else {
-    // iOS & diğer: doğrudan Universal Link
-    window.location.href = phantomWebUrl;
+  // 4) Telegram Mini-App API’sini alın
+  const webapp = (window as any).Telegram?.WebApp;
+
+  // 5) Android Telegram webview içindeysek, openLink ile önce Chrome'u başlat ve geri dön
+  if (/Android/i.test(navigator.userAgent) && webapp?.openLink) {
+    webapp.openLink(intentUrl, true /* try system browser */);
+    return;
   }
+
+  // 6) Diğer durumlar (iOS veya normal mobil tarayıcı) — direkt Universal Link
+  window.location.href = phantomWebUrl;
 };
 
 
