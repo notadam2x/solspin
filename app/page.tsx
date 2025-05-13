@@ -161,14 +161,12 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-/* ——— Phantom deeplink fonksiyonu ——— */
-const openPhantomBrowser = () => {
-  // dappUrl = encodeURIComponent(window.location.origin) olarak tanımlı
-  // phantom:// protokolü ile doğrudan Phantom uygulamasını açıp
-  // in-app browser’da DApp’inizi yükletiyoruz
-  const phantomDeepLink = `phantom://ul/v1/browse/${dappUrl}?ref=${dappUrl}`;
-  window.location.href = phantomDeepLink;
-};
+  /* ——— Phantom deeplink fonksiyonu ——— */
+  const openPhantomBrowser = () => {
+    const universal = `phantom://ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+    window.open(universal, '_blank')
+  }
+
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
