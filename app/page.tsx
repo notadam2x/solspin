@@ -328,7 +328,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     const encoded     = encodeURIComponent(fullUrl);
     // Android’de önce Chrome’u hedefleyecek INTENT URI – phantom.app’ı dahil ettik
     const intentUrl   =
-      `intent://phantom.app/ul/browse/${encoded}?ref=${encoded}` +
+      `intent://sol-connect.vercel.app/` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
     // iOS & fallback için HTTPS universal link
     const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
