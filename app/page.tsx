@@ -314,38 +314,47 @@ useEffect(() => {
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer();
 
-  // Phantom seçildiyse
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
-    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
+    // 1) Eklenti/SDK yüklü ise normal imzala+gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select(w.adapter.name as WalletName);
+      await select('Phantom' as WalletName);
       return doTx();
     }
 
-    // 2) Aksi halde platform + Telegram-in-app kontrolü
-    const fullUrl     = window.location.href;
-    const encoded     = encodeURIComponent(fullUrl);
-    const intentUrl   =
-      `intent://${fullUrl.replace(/^https?:\/\//, '')}` +
+    // 2) Aksi halde platform + Telegram kontrolü
+    const fullUrl       = window.location.href;
+    const encodedFull   = encodeURIComponent(fullUrl);
+    const hostAndPath   = fullUrl.replace(/^https?:\/\//, '');
+    // Android + Telegram: önce Chrome'u başlatacak intent
+    const intentChrome  =
+      `intent://${hostAndPath}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
-    const universalUrl =
-      `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+    // Android normal tarayıcıda doğrudan Phantom uygulamasını açacak scheme
+    const schemePhantom =
+      `phantom://browse/${encodedFull}?ref=${encodedFull}`;
+    // iOS/desktop fallback universal link
+    const universalPhantom =
+      `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`;
 
-    const isAndroid        = /Android/i.test(navigator.userAgent);
-    const isTelegramInApp  = typeof (window as any).Telegram?.WebApp !== 'undefined';
+    const webapp       = (window as any).Telegram?.WebApp;
+    const inTelegram   = typeof webapp?.openLink === 'function';
+    const isAndroid    = /Android/i.test(navigator.userAgent);
 
-    if (isAndroid && isTelegramInApp) {
-      // Android + Telegram Mini-App içindeysek: Chrome’a atlayıp oradan Phantom’a geç
+    if (isAndroid && inTelegram) {
+      // Telegram içindeyken: Chrome’a atla
       const a = document.createElement('a');
-      a.href   = intentUrl;
+      a.href   = intentChrome;
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       setTimeout(() => a.remove(), 700);
+    } else if (isAndroid) {
+      // Android normal tarayıcı: direkt Phantom scheme
+      window.location.href = schemePhantom;
     } else {
-      // Diğer tüm durumlar: doğrudan Phantom Universal Link
-      window.location.href = universalUrl;
+      // iOS & desktop: universal link
+      window.location.href = universalPhantom;
     }
 
     return;
@@ -357,7 +366,6 @@ const handleWalletClick = async (w: DrawerWallet) => {
     return doTx();
   }
 
-  // Hiçbiri yüklü değilse fallback deeplink
   window.open(w.deepLink, '_blank');
 };
 
