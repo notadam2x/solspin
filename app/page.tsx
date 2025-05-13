@@ -161,27 +161,11 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-
-/* ——— Phantom deeplink fonksiyonu (fallback’li) ——— */
-const openPhantomBrowser = () => {
-  const pageUrl   = window.location.origin;                      // örn. https://sol-spin.vercel.app
-  const encoded   = encodeURIComponent(pageUrl);
-  const scheme    = `phantom://ul/v1/browse/${encoded}?ref=${encoded}`;   // custom-scheme
-  const universal = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`; // universal link
-
-  const webapp = (window as any).Telegram?.WebApp;
-
-  if (webapp?.openLink) {
-    // 1) Telegram Mini-App içindeyse önce scheme’i dene
-    webapp.openLink(scheme);
-    // 2) 700ms sonra hala açılmadıysa universal link’e geç
-    setTimeout(() => webapp.openLink(universal), 700);
-  } else {
-    // 3) Telegram dışı / normal tarayıcı: önce scheme, sonra fallback
-    window.location.href = scheme;
-    setTimeout(() => (window.location.href = universal), 700);
+  /* ——— Phantom deeplink fonksiyonu ——— */
+  const openPhantomBrowser = () => {
+    const universal = `phantom://ul/v1/browse/${encoded}?ref=${encoded}`
+    window.open(universal, '_blank')
   }
-};
 
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
