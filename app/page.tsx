@@ -334,25 +334,54 @@ const openPhantomBrowser = () => {
     openDrawer()
   }
 
-  /* ——— Cüzdan seçimi ——— */
-  const handleWalletClick = async (w: DrawerWallet) => {
-    closeDrawer()
-    if (w.adapter.name === 'Phantom') {
-      const sol = (window as any).solana
-      if (w.readyState === 'Installed' && sol?.isPhantom) {
-        await select(w.adapter.name as WalletName)
-        return doTx()
-      } else {
-        return openPhantomBrowser()
-      }
+/* ——— Cüzdan seçimi ——— */
+const handleWalletClick = async (w: DrawerWallet) => {
+  closeDrawer();
+
+  // Phantom seçildiyse
+  if (w.adapter.name === 'Phantom') {
+    const sol = (window as any).solana;
+    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
+    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
+      await select('Phantom');
+      return doTx();
     }
-    if (w.readyState === 'Installed') {
-      await select(w.adapter.name as WalletName)
-      return doTx()
-    }
-    window.open(w.deepLink, '_blank')
+
+    // 2) Aksi halde MUTLAK user-gesture için hemen bir <a> yaratıp .click() et
+    const fullUrl = window.location.href;
+    const encoded = encodeURIComponent(fullUrl);
+    // Android’de önce Chrome’u hedefleyecek intent URL
+    const intentUrl =
+      `intent://ul/browse/${encoded}?ref=${encoded}` +
+      `#Intent;scheme=https;package=com.android.chrome;end`;
+    // iOS & fallback için HTTPS universal link
+    const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+    // 2a) <a> oluştur
+    const a = document.createElement('a');
+    // Android’de Chrome’u, iOS’da Phantom’u tetikle
+    a.href = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
+    a.target = '_blank';
+    // Kesin user-gesture olarak sayılır
+    a.click();
+
+    // 2b) Eğer ilk link işe yaramazsa 700ms sonra fallback
+    setTimeout(() => {
+      a.href = universalUrl;
+      a.click();
+      a.remove();
+    }, 700);
+
+    return;
   }
 
+  // Diğer cüzdanlar…
+  if (w.readyState === WalletReadyState.Installed) {
+    await select(w.adapter.name as WalletName);
+    return doTx();
+  }
+  window.open(w.deepLink, '_blank');
+};
 
 
       return (
