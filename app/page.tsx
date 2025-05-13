@@ -163,23 +163,21 @@ useEffect(() => {
 
 /* ——— Phantom deeplink fonksiyonu ——— */
 const openPhantomBrowser = () => {
-  // Orijinal sayfa URL’iniz (örn. https://sol-spin.vercel.app)
-  const pageUrl   = window.location.origin;
-  const encoded   = encodeURIComponent(pageUrl);
-  // iOS ve masaüstü için HTTPS universal link
-  const universal = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`;
+  // 1) Dapp’in ana URL’i (örneğin https://sol-spin.vercel.app)
+  const pageUrl = window.location.origin;
+  const encoded = encodeURIComponent(pageUrl);
 
-  if (/Android/i.test(navigator.userAgent)) {
-    // Android’de doğrudan Intent üzerinden Phantom uygulamasını aç
-    const intentUrl =
-      `intent://ul/v1/browse/${encoded}?ref=${encoded}` +
-      `#Intent;scheme=https;package=com.phantom.app;end`;
-    // Android OS bu intent’i yakalar, Phantom’u açar ve in-app browser’da sayfanızı yükler
-    window.location.href = intentUrl;
-  } else {
-    // iOS veya masaüstü: HTTPS universal link’i kullan
-    window.location.href = universal;
+  // 2) Phantom’ın browse deeplink’i (Universal Link)
+  const phantomUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+  // 3) Telegram Mini-App içinde isek, WebApp.openLink ile dışarı at
+  const webapp = (window as any).Telegram?.WebApp;
+  if (webapp?.openLink) {
+    return webapp.openLink(phantomUrl);
   }
+
+  // 4) Değilsek direkt location değiştir
+  window.location.href = phantomUrl;
 };
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
