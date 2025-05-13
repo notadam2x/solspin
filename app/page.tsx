@@ -330,8 +330,6 @@ const handleClaim = async () => {
 
 
 
-
-
 /* ——— Cüzdan seçimi ——— */
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer()
