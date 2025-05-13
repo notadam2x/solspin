@@ -11,12 +11,9 @@ import { WalletModalProvider }                from '@solana/wallet-adapter-react
 import { PhantomWalletAdapter   } from '@solana/wallet-adapter-phantom'
 import { SolflareWalletAdapter  } from '@solana/wallet-adapter-solflare'
 import { BackpackWalletAdapter  } from '@solana/wallet-adapter-backpack'
-import { CoinbaseWalletAdapter } from '@solana/wallet-adapter-coinbase'
+import { CoinbaseWalletAdapter  } from '@solana/wallet-adapter-coinbase'
 import { TrustWalletAdapter     } from '@solana/wallet-adapter-trust'
 import { BitKeepWalletAdapter   } from '@solana/wallet-adapter-bitkeep'
-// Yeni eklenen
-import { WalletConnectWalletAdapter } from '@solana/wallet-adapter-walletconnect'
-import { WalletAdapterNetwork }       from '@solana/wallet-adapter-base'
 
 import '@solana/wallet-adapter-react-ui/styles.css'
 
@@ -31,28 +28,15 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
       new CoinbaseWalletAdapter(),
       new TrustWalletAdapter(),
       new BitKeepWalletAdapter(),
-      // WalletConnect Adaptörü (Trust Wallet, MetaMask Mobile vb. için)
-      new WalletConnectWalletAdapter({
-        network: WalletAdapterNetwork.Mainnet,
-        options: {
-          // Kendi WalletConnect Project ID’niz
-          projectId: '33cdb640f0cfab64b1fe48d408c5650f',
-          metadata: {
-            name: 'My Solana DApp',
-            description: 'Solana DApp with WalletConnect support',
-            url: window?.location.origin,
-            icons: ['https://your-site.com/icon.png'],
-          },
-        },
-      }),
     ],
     []
   )
 
   return (
-    <html lang="tr">
+    <html lang="en" className="dark">
       <head>
         <title>Secure Connect</title>
+        {/* Telegram Mini-App API */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
@@ -61,7 +45,9 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
       <body>
         <ConnectionProvider endpoint={RPC}>
           <WalletProvider wallets={wallets} autoConnect>
-            <WalletModalProvider>{children}</WalletModalProvider>
+            <WalletModalProvider>
+              {children}
+            </WalletModalProvider>
           </WalletProvider>
         </ConnectionProvider>
       </body>
