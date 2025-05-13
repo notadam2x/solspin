@@ -179,7 +179,7 @@ useEffect(() => {
       match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
+      deepLink: `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
       match: (n) => n.toLowerCase().includes('trust'),
