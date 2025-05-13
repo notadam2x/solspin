@@ -161,31 +161,7 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-/* ——— Phantom deeplink fonksiyonu ——— */
-const openPhantomBrowser = () => {
-  // 1) Tam URL’i kodla
-  const full   = window.location.href;
-  const target = encodeURIComponent(full);
-  const scheme = `phantom://browse/${target}?ref=${target}`;        // custom‑scheme
-  const https  = `https://phantom.app/ul/browse/${target}?ref=${target}`; // fallback
 
-  // 2) <a> elemanı yarat (Telegram WebView gesture algılıyor)
-  const link = document.createElement("a");
-  link.href   = scheme;
-  link.target = "_blank";        // yeni pencere ⇒ OS’e kaçma şansı
-  link.rel    = "noopener";
-  document.body.appendChild(link);
-
-  // 3) HÂLÂ kullanıcı tıklaması içindeyiz → .click() gesture kabul edilir
-  link.click();
-
-  // 4) 600 ms sonra hâlâ açılmadıysa universal‑link’e düş
-  setTimeout(() => {
-    link.href = https;
-    link.click();
-    document.body.removeChild(link);
-  }, 600);
-};
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
