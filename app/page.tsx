@@ -324,47 +324,40 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return doTx();
     }
 
-    // 2) Aksi halde MUTLAK user-gesture için <a>.click() tekniği
+    // 2) Aksi halde platforma göre yönlendir:
+
+    // Tam DApp URL’inizin host+path+query kısmı:
     const fullUrl     = window.location.href;
-    const encoded     = encodeURIComponent(fullUrl);
+    const hostAndPath = fullUrl.replace(/^https?:\/\//, "");
 
-    // — Android için: Phantom uygulamasını hedefleyen Intent URI
-    //    package=app.phantom  ← Phantom Android paket adı
-    const intentUrl =
-      `intent://browse/${encoded}?ref=${encoded}` +
-      `#Intent;scheme=phantom;package=app.phantom;end`;
+    // — Android: Chrome’u açacak Intent URI
+    const chromeIntent =
+      `intent://${hostAndPath}` +
+      `#Intent;scheme=https;package=com.android.chrome;end`;
 
-    // — Fallback: Universal Link (hem Android hem iOS’da çalışır)
-    const universalUrl =
-      `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+    // — iOS: Phantom’ın in-app browser’ını açacak Universal Link
+    const iosPhantom = `https://phantom.app/ul/browse/${encodeURIComponent(fullUrl)}?ref=${encodeURIComponent(fullUrl)}`;
 
-    const a = document.createElement('a');
-    // Android’de Intent, diğerlerinde Universal Link
-    a.href   = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-
-    // Eğer ilk Intent URI ile Phantom açılmazsa 700ms sonra universal’a düş
-    setTimeout(() => {
-      a.href = universalUrl;
-      a.click();
-      a.remove();
-    }, 700);
+    if (/Android/i.test(navigator.userAgent)) {
+      // Chrome’a atla
+      window.location.href = chromeIntent;
+    } else {
+      // iOS ve diğerleri: Phantom’a atla
+      window.location.href = iosPhantom;
+    }
 
     return;
   }
 
-  // Diğer cüzdanlar…
+  // Diğer cüzdanlar (Trust, Backpack, vb.)
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
   // Hiçbiri yüklü değilse deeplink ile yönlendir
-  window.open(w.deepLink, '_blank');
+  window.open(w.deepLink, "_blank");
 };
-
 
       return (
         <>
