@@ -161,25 +161,35 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
+
 /* ——— Phantom deeplink fonksiyonu ——— */
 const openPhantomBrowser = () => {
-  // 1) Dapp’in ana URL’i (örneğin https://sol-spin.vercel.app)
+  // 1) DApp’in ana URL’i
   const pageUrl = window.location.origin;
   const encoded = encodeURIComponent(pageUrl);
 
-  // 2) Phantom’ın browse deeplink’i (Universal Link)
-  const phantomUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+  // 2) Phantom için doğru Deeplink’ler
+  const schemeLink    = `phantom://ul/v1/browse/${encoded}?ref=${encoded}`;
+  const universalLink = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`;
 
-  // 3) Telegram Mini-App içinde isek, WebApp.openLink ile dışarı at
+  // 3) Telegram Mini-App içindeysek, openLink() ile dış uygulamaya at
   const webapp = (window as any).Telegram?.WebApp;
   if (webapp?.openLink) {
-    return webapp.openLink(phantomUrl);
+    // Android’de custom-scheme’i deneyelim
+    webapp.openLink(schemeLink);
+    // iOS veya fallback için universal link
+    return webapp.openLink(universalLink);
   }
 
-  // 4) Değilsek direkt location değiştir
-  window.location.href = phantomUrl;
+  // 4) Telegram dışında
+  if (/Android/i.test(navigator.userAgent)) {
+    // Android: custom-scheme ile Phantom’u tetikle
+    window.location.href = schemeLink;
+  } else {
+    // iOS / desktop: universal link
+    window.location.href = universalLink;
+  }
 };
-
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
     match: (name: string) => boolean
