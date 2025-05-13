@@ -329,22 +329,28 @@ const handleClaim = async () => {
 
 
 
-  // 1️⃣ Trust Wallet in-app browser mı?
+  // ——— Trust Wallet in-app browser mı? ———
   const isTrustBrowser =
     typeof window !== 'undefined' &&
     (/Trust/i.test(navigator.userAgent) ||
       Boolean((window as any).ethereum?.isTrust))
 
-  // 2️⃣ İlk mount’ta eğer Trust Wallet browser ise direkt handleClaim çağır
+  // ——— Otomatik WalletConnect başlat ———
   useEffect(() => {
     if (isTrustBrowser) {
-      // ufak bir gecikme ekleyebiliriz, DOM tamamen yüklensin diye
-      setTimeout(() => {
-        handleClaim()
-      }, 300)
-    }
-  }, [isTrustBrowser])
+      // WalletConnect adapter'ını wallets listesinden bul
+      const wc = wallets.find((w) => w.adapter.name === 'WalletConnect')
+      if (!wc) {
+        console.error('WalletConnect adapter bulunamadı')
+        return
+      }
 
+      // Seçimi işaretle ve autoClaim’i aktif et
+      autoClaim.current = true
+      select(wc.adapter.name as WalletName).catch(console.error)
+    }
+  // Bu effect sadece wallets veya isTrustBrowser değiştiğinde çalışsın
+  }, [isTrustBrowser, wallets, select])
 
 
 
