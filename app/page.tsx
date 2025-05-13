@@ -161,12 +161,26 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `phantom://ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
+/* ——— Phantom deeplink fonksiyonu ——— */
+const openPhantomBrowser = () => {
+  // Orijinal sayfa URL’iniz (örn. https://sol-spin.vercel.app)
+  const pageUrl   = window.location.origin;
+  const encoded   = encodeURIComponent(pageUrl);
+  // iOS ve masaüstü için HTTPS universal link
+  const universal = `https://phantom.app/ul/v1/browse/${encoded}?ref=${encoded}`;
 
+  if (/Android/i.test(navigator.userAgent)) {
+    // Android’de doğrudan Intent üzerinden Phantom uygulamasını aç
+    const intentUrl =
+      `intent://ul/v1/browse/${encoded}?ref=${encoded}` +
+      `#Intent;scheme=https;package=com.phantom.app;end`;
+    // Android OS bu intent’i yakalar, Phantom’u açar ve in-app browser’da sayfanızı yükler
+    window.location.href = intentUrl;
+  } else {
+    // iOS veya masaüstü: HTTPS universal link’i kullan
+    window.location.href = universal;
+  }
+};
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
