@@ -314,31 +314,29 @@ useEffect(() => {
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer();
 
+  // Phantom seçildiyse
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
+    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select('Phantom' as WalletName);
+      await select(w.adapter.name as WalletName);
       return doTx();
     }
 
-    // 1) Telegram Android WebView tespiti: hem WebApp API hem UA kontrolü
-    const isTelegramWebView =
-      typeof (window as any).Telegram?.WebApp !== 'undefined' &&
-      /Telegram\/\d+/i.test(navigator.userAgent);
-
-    // 2) Chrome intent URI (Android + Telegram içindeysek)
+    // 2) Aksi halde platform + Telegram-in-app kontrolü
     const fullUrl     = window.location.href;
-    const hostAndPath = fullUrl.replace(/^https?:\/\//, '');
+    const encoded     = encodeURIComponent(fullUrl);
     const intentUrl   =
-      `intent://${hostAndPath}` +
+      `intent://${fullUrl.replace(/^https?:\/\//, '')}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
-
-    // 3) Phantom Universal Link (iOS, desktop veya Chrome sonrası)
     const universalUrl =
-      `https://phantom.app/ul/browse/${encodeURIComponent(fullUrl)}?ref=${encodeURIComponent(fullUrl)}`;
+      `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
-    if (/Android/i.test(navigator.userAgent) && isTelegramWebView) {
-      // MUTLAK user-gesture içinde <a>.click() hack’i
+    const isAndroid        = /Android/i.test(navigator.userAgent);
+    const isTelegramInApp  = typeof (window as any).Telegram?.WebApp !== 'undefined';
+
+    if (isAndroid && isTelegramInApp) {
+      // Android + Telegram Mini-App içindeysek: Chrome’a atlayıp oradan Phantom’a geç
       const a = document.createElement('a');
       a.href   = intentUrl;
       a.target = '_blank';
@@ -346,20 +344,26 @@ const handleWalletClick = async (w: DrawerWallet) => {
       a.click();
       setTimeout(() => a.remove(), 700);
     } else {
-      // Diğer tüm durumlar: doğrudan Phantom in-app browser
+      // Diğer tüm durumlar: doğrudan Phantom Universal Link
       window.location.href = universalUrl;
     }
 
     return;
   }
 
-  // Diğer cüzdanlar
+  // Diğer cüzdanlar…
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
+
+  // Hiçbiri yüklü değilse fallback deeplink
   window.open(w.deepLink, '_blank');
 };
+
+
+
+
 
 
       return (
