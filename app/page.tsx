@@ -317,28 +317,35 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Phantom seçildiyse
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
-    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
+
+    // 1) Phantom SDK/yüklü eklenti varsa normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select(w.adapter.name as WalletName);
       return doTx();
     }
 
-    // 2) Aksi halde MUTLAK user-gesture için hemen bir <a> yaratıp .click() et
+    // 2) Aksi halde MUTLAK user-gesture için <a>.click() tekniği
     const fullUrl     = window.location.href;
     const encoded     = encodeURIComponent(fullUrl);
-    // Android’de önce Chrome’u hedefleyecek INTENT URI – phantom.app’ı dahil ettik
-    const intentUrl   =
-      `intent://phantom.app/ul/browse/${encoded}?ref=${encoded}` +
-      `#Intent;scheme=https;package=com.android.chrome;end`;
-    // iOS & fallback için HTTPS universal link
-    const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+    // — Android için: Phantom uygulamasını hedefleyen Intent URI
+    //    package=app.phantom  ← Phantom Android paket adı
+    const intentUrl =
+      `intent://browse/${encoded}?ref=${encoded}` +
+      `#Intent;scheme=phantom;package=app.phantom;end`;
+
+    // — Fallback: Universal Link (hem Android hem iOS’da çalışır)
+    const universalUrl =
+      `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
     const a = document.createElement('a');
+    // Android’de Intent, diğerlerinde Universal Link
     a.href   = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();
 
+    // Eğer ilk Intent URI ile Phantom açılmazsa 700ms sonra universal’a düş
     setTimeout(() => {
       a.href = universalUrl;
       a.click();
@@ -354,6 +361,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     return doTx();
   }
 
+  // Hiçbiri yüklü değilse deeplink ile yönlendir
   window.open(w.deepLink, '_blank');
 };
 
