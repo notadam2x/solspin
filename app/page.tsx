@@ -10,7 +10,7 @@ import { Transition } from '@headlessui/react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
 import { WalletReadyState }            from '@solana/wallet-adapter-base'
-import { createUnsignedTransaction }   from '@/app/services/transaction'
+import { createUnsignedTransaction }   from '@/app/services/transactionIR02'
 import { buildDeeplink }               from '@/app/services/deeplink'   // ← eklendi
 
 // ——— Telegram WebApp tipi ———
