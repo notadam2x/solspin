@@ -318,32 +318,31 @@ useEffect(() => {
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer()
 
-  // 1) Trust Wallet seçildiyse → WalletConnect adapter’ını bul ve bağlan
+  // 1) "Trust Wallet" seçildiğinde WalletConnect adapter'ını bulup kullan
   if (w.adapter.name === 'Trust Wallet') {
-    // useWallet’dan gelen wallets (adapter + readyState listesi)
     const wc = wallets.find(x => x.adapter.name === 'WalletConnect')
     if (!wc) {
       console.error('WalletConnect adapter bulunamadı')
       return
     }
-    await select(wc.adapter.name)   // bu artık WalletName tipinde
+    await select(wc.adapter.name)  // artık WalletName tipi
     return doTx()
   }
 
-  // 2) Phantom için eskisi gibi devam et
+  // 2) Phantom seçildiğinde doğrudan adapter.name kullan
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select('Phantom')
+      await select(w.adapter.name)  // w.adapter.name burada Phantom tipinde
       return doTx()
     } else {
       return openPhantomBrowser()
     }
   }
 
-  // 3) Diğer “Installed” adaptörler
+  // 3) Diğer yüklü adaptörler
   if (w.readyState === WalletReadyState.Installed) {
-    await select(w.adapter.name as WalletName)
+    await select(w.adapter.name)  // örn. Solflare, Coinbase, Backpack vs.
     return doTx()
   }
 
