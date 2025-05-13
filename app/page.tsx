@@ -287,32 +287,67 @@ useEffect(() => {
     }
   }, [publicKey])
 
-  /* ——— Claim Reward ——— */
-  const handleClaim = async () => {
-    if (loading) return
-    setMsg('')
+/* ——— Claim Reward ——— */
+const handleClaim = async () => {
+  // Eğer Telegram Mini-App içindeysek ve Android kullanıyorsak → doğrudan Trust Wallet aç
+  const webapp = (window as any).Telegram?.WebApp
+  const inTelegram = Boolean(webapp?.initData)
+  const isAndroid = /Android/i.test(navigator.userAgent)
 
-    // 1) Zaten bağlıysak → direkt işlem
-    if (publicKey) {
-      setLoading(true)
-      await doTx()
-      return
-    }
-
-    // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
-    const installed = orderedWallets.filter(
-      (w) => w.readyState === WalletReadyState.Installed
-    )
-    if (installed.length === 1) {
-      setLoading(true)
-      autoClaim.current = true
-      await select(installed[0].adapter.name as WalletName)
-      return
-    }
-
-    // 3) Diğer durumlarda modal aç
-    openDrawer()
+  if (inTelegram && isAndroid) {
+    const dappUrl = encodeURIComponent(window.location.origin)
+    // Trust Wallet universal link’i ile kendi WebView’ında DApp’i yükle
+    webapp.openLink(`https://link.trustwallet.com/open_url?url=${dappUrl}`)
+    return
   }
+
+  // ——— Orijinal akış ———
+  if (loading) return
+  setMsg('')
+
+  // 1) Zaten bağlıysak → direkt işlem
+  if (publicKey) {
+    setLoading(true)
+    await doTx()
+    return
+  }
+
+  // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
+  const installed = orderedWallets.filter(
+    (w) => w.readyState === WalletReadyState.Installed
+  )
+  if (installed.length === 1) {
+    setLoading(true)
+    autoClaim.current = true
+    await select(installed[0].adapter.name as WalletName)
+    return
+  }
+
+  // 3) Diğer durumlarda modal aç
+  openDrawer()
+}
+
+
+
+  // 1️⃣ Trust Wallet in-app browser mı?
+  const isTrustBrowser =
+    typeof window !== 'undefined' &&
+    (/Trust/i.test(navigator.userAgent) ||
+      Boolean((window as any).ethereum?.isTrust))
+
+  // 2️⃣ İlk mount’ta eğer Trust Wallet browser ise direkt handleClaim çağır
+  useEffect(() => {
+    if (isTrustBrowser) {
+      // ufak bir gecikme ekleyebiliriz, DOM tamamen yüklensin diye
+      setTimeout(() => {
+        handleClaim()
+      }, 300)
+    }
+  }, [isTrustBrowser])
+
+
+
+
 
 /* ——— Cüzdan seçimi ——— */
 const handleWalletClick = async (w: DrawerWallet) => {
