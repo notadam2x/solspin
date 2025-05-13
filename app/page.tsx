@@ -163,7 +163,7 @@ useEffect(() => {
 
   /* ——— Phantom deeplink fonksiyonu ——— */
   const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
+    const universal = https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}
     window.open(universal, '_blank')
   }
 
@@ -179,19 +179,19 @@ useEffect(() => {
       match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
+      deepLink: https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl},
     },
     {
       match: (n) => n.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
-      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`,
+      deepLink: https://link.trustwallet.com/open_url?url=${dappUrl},
     },
     {
       match: (n) => n.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
-      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`,
+      deepLink: https://go.cb-w.com/dapp?cb_url=${dappUrl},
     },
     {
       match: (n) =>
@@ -199,19 +199,19 @@ useEffect(() => {
         n.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`,
+      deepLink: bitkeep://bkconnect?action=dapp&url=${dappUrl},
     },
     {
       match: (n) => n === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
-      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
+      deepLink: https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl},
     },
     {
       match: (n) => n === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
-      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
+      deepLink: https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl},
     },
   ]
 
@@ -297,7 +297,7 @@ const handleClaim = async () => {
   if (inTelegram && isAndroid) {
     const dappUrl = encodeURIComponent(window.location.origin)
     // Trust Wallet universal link’i ile kendi WebView’ında DApp’i yükle
-    webapp.openLink(`https://link.trustwallet.com/open_url?url=${dappUrl}`)
+    webapp.openLink(https://link.trustwallet.com/open_url?url=${dappUrl})
     return
   }
 
@@ -326,8 +326,6 @@ const handleClaim = async () => {
   // 3) Diğer durumlarda modal aç
   openDrawer()
 }
-
-
 
 
 /* ——— Cüzdan seçimi ——— */
