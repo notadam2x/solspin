@@ -163,7 +163,7 @@ useEffect(() => {
 
   /* ——— Phantom deeplink fonksiyonu ——— */
   const openPhantomBrowser = () => {
-    const universal = `phantom://ul/v1/browse/${dappUrl}?ref=${dappUrl}`
+    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     window.open(universal, '_blank')
   }
 
