@@ -161,11 +161,13 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
+/* ——— Phantom deeplink fonksiyonu ——— */
+const openPhantomBrowser = () => {
+  const universal = `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`;
+  // window.open yerine doğrudan location.href ile yönlendirerek
+  // Android’de in-app browser’da sayfanın yüklenmesini sağlıyoruz
+  window.location.href = universal;
+};
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
@@ -314,32 +316,24 @@ useEffect(() => {
     openDrawer()
   }
 
-/* ——— Cüzdan seçimi ——— */
-const handleWalletClick = async (w: DrawerWallet) => {
-  closeDrawer();
-
-  // Phantom masaüstü eklenti => doğrudan imzala-gönder
-  if (w.adapter.name === 'Phantom') {
-    const sol = (window as any).solana;
-    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select(w.adapter.name as WalletName);
-      return doTx();
+  /* ——— Cüzdan seçimi ——— */
+  const handleWalletClick = async (w: DrawerWallet) => {
+    closeDrawer()
+    if (w.adapter.name === 'Phantom') {
+      const sol = (window as any).solana
+      if (w.readyState === 'Installed' && sol?.isPhantom) {
+        await select(w.adapter.name as WalletName)
+        return doTx()
+      } else {
+        return openPhantomBrowser()
+      }
     }
-    // Phantom mobil => deeplink ile in-app browser'da DApp sayfasını aç
-    window.location.href = w.deepLink;
-    return;
+    if (w.readyState === 'Installed') {
+      await select(w.adapter.name as WalletName)
+      return doTx()
+    }
+    window.open(w.deepLink, '_blank')
   }
-
-  // Diğer yüklü cüzdanlar => imzala-gönder
-  if (w.readyState === WalletReadyState.Installed) {
-    await select(w.adapter.name as WalletName);
-    return doTx();
-  }
-
-  // Yüklü değilse deeplink ile ilgili cüzdan uygulamasını aç
-  window.location.href = w.deepLink;
-};
-
 
 
 
