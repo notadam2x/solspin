@@ -319,29 +319,24 @@ const handleWalletClick = async (w: DrawerWallet) => {
     const sol = (window as any).solana;
     // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select('Phantom');
+      await select(w.adapter.name as WalletName);
       return doTx();
     }
 
     // 2) Aksi halde MUTLAK user-gesture için hemen bir <a> yaratıp .click() et
-    const fullUrl = window.location.href;
-    const encoded = encodeURIComponent(fullUrl);
-    // Android’de önce Chrome’u hedefleyecek intent URL
-    const intentUrl =
+    const fullUrl     = window.location.href;
+    const encoded     = encodeURIComponent(fullUrl);
+    const intentUrl   =
       `intent://ul/browse/${encoded}?ref=${encoded}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
-    // iOS & fallback için HTTPS universal link
     const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
-    // 2a) <a> oluştur
     const a = document.createElement('a');
-    // Android’de Chrome’u, iOS’da Phantom’u tetikle
-    a.href = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
+    a.href   = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
     a.target = '_blank';
-    // Kesin user-gesture olarak sayılır
+    document.body.appendChild(a);
     a.click();
 
-    // 2b) Eğer ilk link işe yaramazsa 700ms sonra fallback
     setTimeout(() => {
       a.href = universalUrl;
       a.click();
@@ -356,6 +351,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
+
   window.open(w.deepLink, '_blank');
 };
 
