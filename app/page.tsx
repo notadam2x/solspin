@@ -317,47 +317,46 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Phantom seçildiyse
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
-
-    // 1) Phantom SDK/yüklü eklenti varsa normal imzala-gönder
+    // 1) Eğer Phantom SDK/yüklü eklenti varsa normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select(w.adapter.name as WalletName);
       return doTx();
     }
 
-    // 2) Aksi halde platforma göre yönlendir:
-
-    // Tam DApp URL’inizin host+path+query kısmı:
+    // 2) Aksi halde MUTLAK user-gesture için hemen bir <a> yaratıp .click() et
     const fullUrl     = window.location.href;
-    const hostAndPath = fullUrl.replace(/^https?:\/\//, "");
-
-    // — Android: Chrome’u açacak Intent URI
-    const chromeIntent =
-      `intent://${hostAndPath}` +
+    const encoded     = encodeURIComponent(fullUrl);
+    // Android’de önce Chrome’u hedefleyecek INTENT URI – phantom.app’ı dahil ettik
+    const intentUrl   =
+      `intent://phantom.app/ul/browse/${encoded}?ref=${encoded}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
+    // iOS & fallback için HTTPS universal link
+    const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
-    // — iOS: Phantom’ın in-app browser’ını açacak Universal Link
-    const iosPhantom = `https://phantom.app/ul/browse/${encodeURIComponent(fullUrl)}?ref=${encodeURIComponent(fullUrl)}`;
+    const a = document.createElement('a');
+    a.href   = /Android/i.test(navigator.userAgent) ? intentUrl : universalUrl;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
 
-    if (/Android/i.test(navigator.userAgent)) {
-      // Chrome’a atla
-      window.location.href = chromeIntent;
-    } else {
-      // iOS ve diğerleri: Phantom’a atla
-      window.location.href = iosPhantom;
-    }
+    setTimeout(() => {
+      a.href = universalUrl;
+      a.click();
+      a.remove();
+    }, 700);
 
     return;
   }
 
-  // Diğer cüzdanlar (Trust, Backpack, vb.)
+  // Diğer cüzdanlar…
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
-  // Hiçbiri yüklü değilse deeplink ile yönlendir
-  window.open(w.deepLink, "_blank");
+  window.open(w.deepLink, '_blank');
 };
+
 
       return (
         <>
