@@ -314,25 +314,36 @@ useEffect(() => {
     openDrawer()
   }
 
-  /* ——— Cüzdan seçimi ——— */
-  const handleWalletClick = async (w: DrawerWallet) => {
-    closeDrawer()
-    if (w.adapter.name === 'Phantom') {
-      const sol = (window as any).solana
-      if (w.readyState === 'Installed' && sol?.isPhantom) {
-        await select(w.adapter.name as WalletName)
-        return doTx()
-      } else {
-        return openPhantomBrowser()
-      }
-    }
-    if (w.readyState === 'Installed') {
-      await select(w.adapter.name as WalletName)
-      return doTx()
-    }
-    window.open(w.deepLink, '_blank')
+/* ——— Cüzdan seçimi ——— */
+const handleWalletClick = async (w: DrawerWallet) => {
+  closeDrawer()
+
+  // “Trust Wallet” seçilince aslında WalletConnect adapter'ını çağır
+  if (w.adapter.name === 'Trust Wallet') {
+    await select('WalletConnect')   // layout.tsx’de eklediğiniz WalletConnect adapter adı
+    return doTx()
   }
 
+  // Phantom için eskiden olduğu gibi
+  if (w.adapter.name === 'Phantom') {
+    const sol = (window as any).solana
+    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
+      await select('Phantom')
+      return doTx()
+    } else {
+      return openPhantomBrowser()
+    }
+  }
+
+  // Diğer yüklü adaptörler (Solflare, Coinbase, Backpack, vs.)
+  if (w.readyState === WalletReadyState.Installed) {
+    await select(w.adapter.name as WalletName)
+    return doTx()
+  }
+
+  // Son çare deep-link
+  window.open(w.deepLink, '_blank')
+}
 
 
       return (
