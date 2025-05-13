@@ -326,9 +326,11 @@ const handleWalletClick = async (w: DrawerWallet) => {
     // 2) Aksi halde MUTLAK user-gesture için hemen bir <a> yaratıp .click() et
     const fullUrl     = window.location.href;
     const encoded     = encodeURIComponent(fullUrl);
+    // Android’de önce Chrome’u hedefleyecek INTENT URI – phantom.app’ı dahil ettik
     const intentUrl   =
-      `intent://ul/browse/${encoded}?ref=${encoded}` +
+      `intent://phantom.app/ul/browse/${encoded}?ref=${encoded}` +
       `#Intent;scheme=https;package=com.android.chrome;end`;
+    // iOS & fallback için HTTPS universal link
     const universalUrl = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
     const a = document.createElement('a');
