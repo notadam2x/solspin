@@ -162,45 +162,23 @@ useEffect(() => {
   const dappUrl = encodeURIComponent(origin)
 
 /* ——— Phantom deeplink fonksiyonu ——— */
-const openPhantomBrowser = () => {
-  // 1) DApp’in tam URL’si (path & query dahil)
-  const pageUrl = window.location.href;
-  const encoded = encodeURIComponent(pageUrl);
+const openPhantomBrowser = (): void => {
+  // Universal Link
+  const phantomWebUrl = `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`;
+  // Android Intent URI → Chrome'u açıp oradan Phantom'ı tetikle
+  const intentUrl =
+    `intent://${phantomWebUrl.replace(/^https?:\/\//, '')}` +
+    `#Intent;scheme=https;package=com.android.chrome;end`;
 
-  // 2) Phantom Browse deeplink (HTTPS universal link)
-  const deeplink = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
-
-  // 3) Telegram Mini-App API’yi al
-  const webapp = (window as any).Telegram?.WebApp;
-
-  // 4) Platformu tespit et
-  const isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
-
-  // — iOS: normal deeplink ile çalıştır
-  if (isIOS) {
-    if (webapp?.openLink) {
-      return webapp.openLink(deeplink);
-    }
-    return window.location.href = deeplink;
+  if (/Android/i.test(navigator.userAgent)) {
+    // Android: önce Chrome, sonra Phantom
+    window.location.href = intentUrl;
+  } else {
+    // iOS & diğer: doğrudan Universal Link
+    window.location.href = phantomWebUrl;
   }
-
-  // — Android: önce harici tarayıcıya fırlat, oradan Phantom’a geç
-  if (isAndroid) {
-    if (webapp?.openLink) {
-      // tryBrowser: "chrome" ile Android’de Chrome’u açtır
-      return webapp.openLink(deeplink, { tryBrowser: "chrome" });
-    }
-    // Telegram dışı normal tarayıcıdaysak Android Intent ile zorla Chrome’u aç
-    const intentUrl =
-      `intent://ul/browse/${encoded}?ref=${encoded}` +
-      `#Intent;scheme=https;package=com.android.chrome;end`;
-    return window.location.href = intentUrl;
-  }
-
-  // — Diğer platformlar (desktop vb.): normal deeplink
-  window.location.href = deeplink;
 };
+
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
