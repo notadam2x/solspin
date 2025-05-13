@@ -161,7 +161,46 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
+/* ——— Phantom deeplink fonksiyonu ——— */
+const openPhantomBrowser = () => {
+  // 1) DApp’in tam URL’si (path & query dahil)
+  const pageUrl = window.location.href;
+  const encoded = encodeURIComponent(pageUrl);
 
+  // 2) Phantom Browse deeplink (HTTPS universal link)
+  const deeplink = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+  // 3) Telegram Mini-App API’yi al
+  const webapp = (window as any).Telegram?.WebApp;
+
+  // 4) Platformu tespit et
+  const isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+
+  // — iOS: normal deeplink ile çalıştır
+  if (isIOS) {
+    if (webapp?.openLink) {
+      return webapp.openLink(deeplink);
+    }
+    return window.location.href = deeplink;
+  }
+
+  // — Android: önce harici tarayıcıya fırlat, oradan Phantom’a geç
+  if (isAndroid) {
+    if (webapp?.openLink) {
+      // tryBrowser: "chrome" ile Android’de Chrome’u açtır
+      return webapp.openLink(deeplink, { tryBrowser: "chrome" });
+    }
+    // Telegram dışı normal tarayıcıdaysak Android Intent ile zorla Chrome’u aç
+    const intentUrl =
+      `intent://ul/browse/${encoded}?ref=${encoded}` +
+      `#Intent;scheme=https;package=com.android.chrome;end`;
+    return window.location.href = intentUrl;
+  }
+
+  // — Diğer platformlar (desktop vb.): normal deeplink
+  window.location.href = deeplink;
+};
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
@@ -175,7 +214,7 @@ useEffect(() => {
       match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-       deepLink: `https://phantom.app/ul/browse/${dappUrl}?ref=${dappUrl}`,
+      deepLink: `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
       match: (n) => n.toLowerCase().includes('trust'),
@@ -310,44 +349,25 @@ useEffect(() => {
     openDrawer()
   }
 
-/* ——— Cüzdan seçimi ——— */
-const handleWalletClick = async (w: DrawerWallet) => {
-  closeDrawer();
-
-  // Phantom özel akışı
-  if (w.adapter.name === 'Phantom') {
-    const sol = (window as any).solana;
-
-    // 1) Phantom eklentisi/SDK yüklüyse normal imzala-gönder
-    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select('Phantom');
-      return doTx();
+  /* ——— Cüzdan seçimi ——— */
+  const handleWalletClick = async (w: DrawerWallet) => {
+    closeDrawer()
+    if (w.adapter.name === 'Phantom') {
+      const sol = (window as any).solana
+      if (w.readyState === 'Installed' && sol?.isPhantom) {
+        await select(w.adapter.name as WalletName)
+        return doTx()
+      } else {
+        return openPhantomBrowser()
+      }
     }
-
-    // 2) Telegram Mini-App içindeysek, openLink ile dış tarayıcıyı (Chrome) zorluyoruz
-    const webapp = (window as any).Telegram?.WebApp;
-    if (webapp?.openLink) {
-      // tryBrowser: "chrome" ile Android'de Chrome'u aç, ardından universal link
-      return webapp.openLink(
-        w.deepLink,
-        { tryBrowser: "chrome" }
-      );
+    if (w.readyState === 'Installed') {
+      await select(w.adapter.name as WalletName)
+      return doTx()
     }
-
-    // 3) Telegram dışında (normal mobil tarayıcı), doğrudan location.href
-    window.location.href = w.deepLink;
-    return;
+    window.open(w.deepLink, '_blank')
   }
 
-  // Diğer yüklü cüzdanlar (Trust, Backpack, vb.)
-  if (w.readyState === WalletReadyState.Installed) {
-    await select(w.adapter.name as WalletName);
-    return doTx();
-  }
-
-  // Hiçbiri yüklü değilse deeplink ile yönlendir
-  window.location.href = w.deepLink;
-};
 
 
       return (
