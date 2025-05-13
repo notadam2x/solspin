@@ -161,12 +161,13 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
-
+/* ——— Phantom deeplink fonksiyonu ——— */
+const openPhantomBrowser = () => {
+  const target = encodeURIComponent(originalPageUrl)   // e.g. dappUrl
+  // Android ve iOS’ta aynı şekilde çalışır:
+  const phantomScheme = `phantom://ul/v1/browse/${target}?ref=${target}`
+  window.location.href = phantomScheme
+}
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
   interface WalletConfig {
     match: (name: string) => boolean
