@@ -161,11 +161,6 @@ useEffect(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Phantom deeplink fonksiyonu ——— */
-  const openPhantomBrowser = () => {
-    const universal = `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`
-    window.open(universal, '_blank')
-  }
 
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
@@ -315,24 +310,32 @@ useEffect(() => {
     openDrawer()
   }
 
-  /* ——— Cüzdan seçimi ——— */
-  const handleWalletClick = async (w: DrawerWallet) => {
-    closeDrawer()
-    if (w.adapter.name === 'Phantom') {
-      const sol = (window as any).solana
-      if (w.readyState === 'Installed' && sol?.isPhantom) {
-        await select(w.adapter.name as WalletName)
-        return doTx()
-      } else {
-        return openPhantomBrowser()
-      }
+/* ——— Cüzdan seçimi ——— */
+const handleWalletClick = async (w: DrawerWallet) => {
+  closeDrawer();
+
+  // Phantom durumu
+  if (w.adapter.name === 'Phantom') {
+    const sol = (window as any).solana;
+    // Eğer Phantom eklentisi (desktop/Mobile SDK) yüklüyse, normal imzala-gönder
+    if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
+      await select(w.adapter.name as WalletName);
+      return doTx();
     }
-    if (w.readyState === 'Installed') {
-      await select(w.adapter.name as WalletName)
-      return doTx()
-    }
-    window.open(w.deepLink, '_blank')
+    // Aksi halde deepLink ile Phantom in-app browser'da sayfayı aç
+    window.location.href = w.deepLink;
+    return;
   }
+
+  // Diğer yüklü cüzdan adaptörleri (Trust, Coinbase, vb.)
+  if (w.readyState === WalletReadyState.Installed) {
+    await select(w.adapter.name as WalletName);
+    return doTx();
+  }
+
+  // Yüklü değilse yine deepLink ile yönlendir
+  window.location.href = w.deepLink;
+};
 
 
 
