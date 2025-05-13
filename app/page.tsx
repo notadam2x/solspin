@@ -314,29 +314,40 @@ useEffect(() => {
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer();
 
-  // Phantom durumu
+  // Phantom özel akışı
   if (w.adapter.name === 'Phantom') {
     const sol = (window as any).solana;
-    // Eğer Phantom eklentisi (desktop/Mobile SDK) yüklüyse, normal imzala-gönder
+
+    // 1) Phantom eklentisi/SDK yüklüyse normal imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-      await select(w.adapter.name as WalletName);
+      await select('Phantom');
       return doTx();
     }
-    // Aksi halde deepLink ile Phantom in-app browser'da sayfayı aç
+
+    // 2) Telegram Mini-App içindeysek, openLink ile dış tarayıcıyı (Chrome) zorluyoruz
+    const webapp = (window as any).Telegram?.WebApp;
+    if (webapp?.openLink) {
+      // tryBrowser: "chrome" ile Android'de Chrome'u aç, ardından universal link
+      return webapp.openLink(
+        w.deepLink,
+        { tryBrowser: "chrome" }
+      );
+    }
+
+    // 3) Telegram dışında (normal mobil tarayıcı), doğrudan location.href
     window.location.href = w.deepLink;
     return;
   }
 
-  // Diğer yüklü cüzdan adaptörleri (Trust, Coinbase, vb.)
+  // Diğer yüklü cüzdanlar (Trust, Backpack, vb.)
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
-  // Yüklü değilse yine deepLink ile yönlendir
+  // Hiçbiri yüklü değilse deeplink ile yönlendir
   window.location.href = w.deepLink;
 };
-
 
 
       return (
