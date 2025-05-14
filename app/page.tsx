@@ -147,16 +147,7 @@ useEffect(() => {
     }, 10000)
   }
 
-  // ——— URL parametreyle modal aç ———
-useEffect(() => {
-  if (typeof window === 'undefined') return;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('modal') === '1') {
-    openDrawer();  // drawerOpen = true
-    // URL’den parametreyi sil (isteğe bağlı)
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-}, []);
+
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
@@ -167,6 +158,21 @@ useEffect(() => {
 
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
+
+    /* ——— Telegram harici + 322–499px aralığında otomatik modal aç ——— */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Telegram WebApp kontörü
+    const inTelegram =
+      typeof (window as any).Telegram !== 'undefined' &&
+      !!(window as any).Telegram.WebApp?.initData?.length;
+
+    const w = window.innerWidth;
+    if (!inTelegram && w >= 322 && w <= 499) {
+      openDrawer();
+    }
+  }, []);
+
 
   /* ——— Origin, Pathname & DApp URL ——— */
   const origin   = typeof window !== 'undefined' ? window.location.origin : ''
