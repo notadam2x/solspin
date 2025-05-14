@@ -340,23 +340,20 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     // 2) Diğer durumlar için URL’leri hesapla
-    const fullUrl     = window.location.href;
-    const baseUrl     = fullUrl.split('?')[0];              // önce eski paramları temizle
-    const modalUrl    = `${baseUrl}?modal=1`;                // modal parametreli URL
-    const encodedFull = encodeURIComponent(fullUrl);
-    const encodedModal= encodeURIComponent(modalUrl);
-    const hostAndPath = fullUrl.replace(/^https?:\/\//, '');
-
-    // Android+Telegram için generic intent: varsayılan tarayıcıda aç ve ?modal=1 ekle
+    const fullUrl           = window.location.href;
+    const encodedFull       = encodeURIComponent(fullUrl);
+    const hostAndPath       = fullUrl.replace(/^https?:\/\//, '');
+    // Android+Telegram için generic intent: telefonun varsayılan tarayıcısını açtırır
     const intentDefaultBrowser = [
       `intent://${hostAndPath}`,
       `#Intent;scheme=https`,
       `;action=android.intent.action.VIEW`,
       `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=${encodedModal}`,
+      `;S.browser_fallback_url=${encodeURIComponent(
+        `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`
+      )}`,
       `;end`
     ].join('');
-
     // Android normal tarayıcıda doğrudan Phantom uygulamasını tetikleyecek scheme
     const schemePhantom =
       `phantom://browse/${encodedFull}?ref=${encodedFull}`;
