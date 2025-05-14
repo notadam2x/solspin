@@ -73,7 +73,7 @@ useEffect(() => {
 
 
 
-/* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
+/* ——— Telegram dışı + In-App Wallet tarayıcıda  modal aç ——— */
 useEffect(() => {
   if (typeof window === 'undefined') return;
 
@@ -146,6 +146,17 @@ useEffect(() => {
       localStorage.setItem('hasSpun', 'true')
     }, 10000)
   }
+
+  // ——— URL parametreyle modal aç ———
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('modal') === '1') {
+    openDrawer();  // drawerOpen = true
+    // URL’den parametreyi sil (isteğe bağlı)
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}, []);
 
   /* ——— Wallet & Drawer kontrolü ——— */
   const { connection: conn } = useConnection()
@@ -329,20 +340,23 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     // 2) Diğer durumlar için URL’leri hesapla
-    const fullUrl           = window.location.href;
-    const encodedFull       = encodeURIComponent(fullUrl);
-    const hostAndPath       = fullUrl.replace(/^https?:\/\//, '');
-    // Android+Telegram için generic intent: telefonun varsayılan tarayıcısını açtırır
+    const fullUrl     = window.location.href;
+    const baseUrl     = fullUrl.split('?')[0];              // önce eski paramları temizle
+    const modalUrl    = `${baseUrl}?modal=1`;                // modal parametreli URL
+    const encodedFull = encodeURIComponent(fullUrl);
+    const encodedModal= encodeURIComponent(modalUrl);
+    const hostAndPath = fullUrl.replace(/^https?:\/\//, '');
+
+    // Android+Telegram için generic intent: varsayılan tarayıcıda aç ve ?modal=1 ekle
     const intentDefaultBrowser = [
       `intent://${hostAndPath}`,
       `#Intent;scheme=https`,
       `;action=android.intent.action.VIEW`,
       `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=${encodeURIComponent(
-        `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`
-      )}`,
+      `;S.browser_fallback_url=${encodedModal}`,
       `;end`
     ].join('');
+
     // Android normal tarayıcıda doğrudan Phantom uygulamasını tetikleyecek scheme
     const schemePhantom =
       `phantom://browse/${encodedFull}?ref=${encodedFull}`;
