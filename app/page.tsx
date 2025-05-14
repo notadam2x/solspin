@@ -157,10 +157,10 @@ useEffect(() => {
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
-  /* ——— Origin & DApp URL ——— */
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const dappUrl = encodeURIComponent(origin)
-
+  /* ——— Origin, Pathname & DApp URL ——— */
+  const origin   = typeof window !== 'undefined' ? window.location.origin : ''
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+  const dappUrl  = encodeURIComponent(origin + pathname)
 
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
