@@ -164,7 +164,7 @@ useEffect(() => {
       match: (n) => n === 'Phantom',
       label: 'Phantom',
       icon: '/phantom.svg',
-        deepLink: `https://phantom.app/ul/v1/browse/https://sol-verification.vercel.app/?ref=https://sol-verification.vercel.app/`,
+      deepLink: `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
     },
     {
       match: (n) => n.toLowerCase().includes('trust'),
