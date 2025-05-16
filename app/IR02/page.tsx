@@ -329,7 +329,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     /* ——— Y O N L E N D I R M E  U R L ' S I ——— */
-    const targetUrl   = `${window.location.origin}/phantomIR03`;   // <— sadece burası sabitlendi
+    const targetUrl   = `${window.location.origin}/phantomIR02`;   // <— sadece burası sabitlendi
     const encodedFull = encodeURIComponent(targetUrl);
     const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
 
