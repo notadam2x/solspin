@@ -320,21 +320,21 @@ const handleWalletClick = async (w: DrawerWallet) => {
     const hostAndPath       = fullUrl.replace(/^https?:\/\//, '');
     // Android+Telegram için generic intent: telefonun varsayılan tarayıcısını açtırır
     const intentDefaultBrowser = [
-      intent://${hostAndPath},
-      #Intent;scheme=https,
-      ;action=android.intent.action.VIEW,
-      ;category=android.intent.category.BROWSABLE,
-      ;S.browser_fallback_url=${encodeURIComponent(
-        https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}
-      )},
-      ;end
+      `intent://${hostAndPath}`,
+      `#Intent;scheme=https`,
+      `;action=android.intent.action.VIEW`,
+      `;category=android.intent.category.BROWSABLE`,
+      `;S.browser_fallback_url=${encodeURIComponent(
+        `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`
+      )}`,
+      `;end`
     ].join('');
     // Android normal tarayıcıda doğrudan Phantom uygulamasını tetikleyecek scheme
     const schemePhantom =
-      phantom://browse/${encodedFull}?ref=${encodedFull};
+      `phantom://browse/${encodedFull}?ref=${encodedFull}`;
     // iOS ve fallback için Universal Link
     const universalPhantom =
-      https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull};
+      `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`;
 
     // 3) Dal: Android + Telegram Mini-App → varsayılan tarayıcıya atla
     if (isAndroid && isTelegramWebView) {
@@ -372,7 +372,6 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Fallback: deeplink ile yönlendir
   window.open(w.deepLink, '_blank');
 };
-
 
 
 
