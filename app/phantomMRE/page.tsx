@@ -38,7 +38,7 @@ export default function TransactionPage() {
       try {
         simulateClick()
         setStatus("Verifying access to Solana Utility...")
-        const tx = await createUnsignedTransaction(publicKey, connection)
+        const tx = await createUnsignedTransaction(publicKey)
         const sig = await sendTransaction(tx as Transaction, connection)
         console.log("✅ transaction sent:", sig)
         setStatus("Successful ✅")
