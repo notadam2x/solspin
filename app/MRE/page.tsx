@@ -4,8 +4,8 @@
 'use client'
 
 import React, { useEffect, useRef, useState, Fragment } from 'react'
-import './assets/2idql.css'
-import './assets/connect.css'
+import '../assets/2idql.css'
+import '../assets/connect.css'
 import { Transition } from '@headlessui/react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
