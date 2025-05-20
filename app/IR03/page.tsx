@@ -315,7 +315,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer()
 
   if (w.adapter.name === 'Phantom') {
-    const sol        = window.solana as PhantomProvider | undefined
+    const sol        = const sol = (window as any).solana;
     const isAndroid  = /Android/i.test(navigator.userAgent)
     // **SADECE** WebApp varlığına göre Telegram tespiti yapıyoruz
     const isTelegram = typeof window.Telegram?.WebApp !== 'undefined'
