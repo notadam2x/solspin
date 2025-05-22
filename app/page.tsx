@@ -73,19 +73,35 @@ useEffect(() => {
 
 
 
-/* ——— Telegram dışı + 322–499px aralığında spin modal’ı otomatik aç ——— */
+/* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
 useEffect(() => {
   if (typeof window === 'undefined') return;
 
-  // Telegram WebApp kontrolü
-  const webapp     = (window as any).Telegram?.WebApp as any;
-  const inTelegram = Boolean(webapp?.initData);
-  const w          = window.innerWidth;
+  const webapp = (window as any).Telegram?.WebApp as any;
+  const inTelegram = Boolean(webapp?.initData);     // artık hata vermez
+  const w = window.innerWidth;
 
   // Sadece Telegram DIŞI ve 322–499px aralığında devam
   if (inTelegram || w < 322 || w > 499) return;
 
-  // Daha önce spin yapılmadıysa → otomatik scroll + modal aç
+  // Tarayıcıda hangi cüzdan in-app browser’ı?
+  const isPhantom        = Boolean((window as any).solana?.isPhantom);
+  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent);
+  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent);
+  const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent);
+  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent);
+  const isBackpack       = /Backpack/i.test(navigator.userAgent);
+
+  const isWalletBrowser = isPhantom
+    || isTrust
+    || isCoinbaseWallet
+    || isBitkeep
+    || isSolflare
+    || isBackpack;
+
+  if (!isWalletBrowser) return;
+
+  // Eğer daha önce spin yapılmadıysa → otomatik scroll + modal
   if (!localStorage.getItem('hasSpun')) {
     const minOffset = 50;
     window.scrollTo({ top: minOffset });
@@ -97,9 +113,8 @@ useEffect(() => {
     };
     window.addEventListener('scroll', keepOffset, { passive: true });
 
-    // Spin modal’ını aç
-    setHasSpun(true);
     localStorage.setItem('hasSpun', 'true');
+    setHasSpun(true);
 
     return () => window.removeEventListener('scroll', keepOffset);
   }
@@ -142,10 +157,9 @@ useEffect(() => {
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
-  /* ——— Origin, Pathname & DApp URL ——— */
-  const origin   = typeof window !== 'undefined' ? window.location.origin : ''
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
-  const dappUrl  = encodeURIComponent(origin + pathname)
+  /* ——— Origin & DApp URL ——— */
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const dappUrl = encodeURIComponent(origin)
 
 
 
