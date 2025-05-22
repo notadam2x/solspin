@@ -131,16 +131,18 @@ useEffect(() => {
   )
 
 useEffect(() => {
-  // Telegram Mini-App içinde değil miyiz?
-  const inTelegram = Boolean((window as any).Telegram?.WebApp?.initData)
-  // Ekran genişliği 322–499px arasında mı?
-  const w = window.innerWidth
+  // Telegram Mini-App içinde miyiz?
+  const inTelegram = Boolean((window as any).Telegram?.WebApp?.initData);
+  // Ekran genişliği
+  const w = window.innerWidth;
+  // Phantom in-app browser kontrolü
+  const isPhantomInApp = Boolean((window as any).solana?.isPhantom);
 
-  if (!inTelegram && w >= 322 && w <= 499) {
-    // doğrudan modal’ı aç
-    setHasSpun(true)
+  // Telegram dışında ve (dar mobil boyut veya Phantom in-app)
+  if (!inTelegram && ((w >= 322 && w <= 499) || isPhantomInApp)) {
+    setHasSpun(true);
   }
-}, [])
+}, []);
 
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
