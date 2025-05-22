@@ -129,6 +129,20 @@ useEffect(() => {
       typeof window !== 'undefined' &&
       localStorage.getItem('hasSpun') === 'true'
   )
+
+  useEffect(() => {
+  // Telegram Mini-App içinde değilsek...
+  const webapp = (window as any).Telegram?.WebApp
+  const inTelegram = Boolean(webapp?.initData)
+  // … ve ekran genişliği 322–499px arasındaysa…
+  const w = window.innerWidth
+  if (!inTelegram && w >= 322 && w <= 499) {
+    // doğrudan modal’ı aktif et
+    setHasSpun(true)
+  }
+}, [])
+
+
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
