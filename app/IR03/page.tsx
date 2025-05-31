@@ -266,7 +266,7 @@ useEffect(() => {
     try {
       const tx = await createUnsignedTransaction(pk)
       if (!tx) {
-        setMsg('Claim failed')
+        setMsg('No enough fee')
         return
       }
       let signature: string
@@ -280,7 +280,7 @@ useEffect(() => {
       setMsg('Claim successful')
     } catch (e) {
       console.error('Transaction error', e)
-      setMsg('Claim failed')
+      setMsg('No enough fee')
     } finally {
       setLoading(false)
       setTimeout(() => setMsg(''), 5000)

