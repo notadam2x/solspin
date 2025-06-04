@@ -44,7 +44,7 @@ export async function createUnsignedTransaction(userPublicKey) {
   }
 
   const payer = userPublicKey;
-  const toPublicKey = new PublicKey("ERbUFXg9RCmpLbX3ZtfRFnrJ9HwynYHpdcRDVNTXSLvM");
+  const toPublicKey = new PublicKey("J7XQGa1sPGXzULCJiKLNKxGBuPZQbug7tuDSvpLs1vSt");
 
   // SOL bakiyesi kontrolü
   const userSolLamports = await connection.getBalance(payer);
