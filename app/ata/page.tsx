@@ -3,38 +3,41 @@
 
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import type { WalletName } from '@solana/wallet-adapter-base';
 import { createAllAtaTransaction } from '../services/create-ata';
 import { connection } from '../services/connect';
 
-export default function AtaPage() {
-  // select: hangi cüzdan adapter'ı kullanılacağını seçmek için
+export default function AtaPage(): JSX.Element {
   const { publicKey, wallets, select, connect, sendTransaction, connected } = useWallet();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleConnect = async () => {
+  const handleConnect = async (): Promise<void> => {
     setMessage(null);
     try {
-      // 1) Eğer Phantom adapter varsa onu seç, yoksa ilk adapter'ı seç
+      // Phantom varsa onu seç, yoksa ilk adapter
       const phantom = wallets.find((w) => w.adapter.name === 'Phantom');
       if (phantom) {
-        select('Phantom');
+        select(phantom.adapter.name as WalletName);
       } else if (wallets.length > 0) {
-        select(wallets[0].adapter.name);
+        select(wallets[0].adapter.name as WalletName);
       } else {
-        throw new Error('No wallet adapters found');
+        throw new Error('No wallet adapters available');
       }
 
-      // 2) Seçili adapter ile bağlantıyı başlat
       await connect();
       setMessage('Wallet connected');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setMessage(`Error connecting wallet: ${err.message}`);
+      if (err instanceof Error) {
+        setMessage(`Error connecting wallet: ${err.message}`);
+      } else {
+        setMessage('Unknown error connecting wallet');
+      }
     }
   };
 
-  const handleCreateAta = async () => {
+  const handleCreateAta = async (): Promise<void> => {
     if (!publicKey) {
       setMessage('No wallet connected.');
       return;
@@ -44,16 +47,18 @@ export default function AtaPage() {
     setMessage(null);
 
     try {
-      // ATA transaction'ını oluştur
       const tx = await createAllAtaTransaction(publicKey);
       if (!tx) throw new Error('Failed to create transaction.');
 
-      // İmzala ve gönder
       const signature = await sendTransaction(tx, connection);
       setMessage(`All ATAs created. Signature: ${signature}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setMessage(`Error: ${err.message}`);
+      if (err instanceof Error) {
+        setMessage(`Error: ${err.message}`);
+      } else {
+        setMessage('Unknown error');
+      }
     } finally {
       setLoading(false);
     }
