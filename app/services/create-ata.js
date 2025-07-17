@@ -2,22 +2,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
-  PublicKey,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
+  getAccount,
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import { connection } from "./connect.js";
 import { TOKEN_CONFIGS } from "./token-config.js";
 
 /**
- * userPublicKey cüzdanına, TOKEN_CONFIGS'ta tanımlı her mint için
- * Associated Token Account (ATA) yaratma instruction’ları ekler.
- * @param {PublicKey} userPublicKey — ATA’ları yaratacak cüzdan
- * @returns {VersionedTransaction|null}
+ * Her mint için eksik ATA'ları oluşturur.
+ * Var olan hesapları atlar, böylece tx revert olmaz.
  */
 export async function createAllAtaTransaction(userPublicKey) {
   if (!userPublicKey) {
@@ -28,20 +26,34 @@ export async function createAllAtaTransaction(userPublicKey) {
   const payer = userPublicKey;
   const instructions = [];
 
-  // Her mint için alıcı ATA hesabı adresini hesapla ve oluşturma instruction'ı ekle
   for (const { mint } of TOKEN_CONFIGS) {
     const ata = await getAssociatedTokenAddress(mint, payer);
+
+    // Hesap zaten var mı?
+    try {
+      await getAccount(connection, ata);
+      // ATA mevcut → atla
+      continue;
+    } catch {
+      // getAccount hata verirse ATA yok demektir
+    }
+
     instructions.push(
       createAssociatedTokenAccountInstruction(
-        payer,   // fee payer
-        ata,     // ATA hesabı adresi
-        payer,   // owner = sizin cüzdan
-        mint     // mint adresi
+        payer,
+        ata,
+        payer,
+        mint
       )
     );
   }
 
-  // Son blockhash’i al ve VersionedTransaction oluştur
+  // Hiç yeni ATA yoksa tx oluşturma
+  if (instructions.length === 0) {
+    console.warn("All ATAs already exist.");
+    return null;
+  }
+
   const { blockhash } = await connection.getLatestBlockhash();
   const messageV0 = new TransactionMessage({
     payerKey:        payer,
