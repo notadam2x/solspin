@@ -336,18 +336,20 @@ const handleWalletClick = async (w: DrawerWallet) => {
       /Telegram/i.test(ua) &&
       typeof (window as any).Telegram?.WebApp !== 'undefined';
 
-    // 1) Phantom SDK/yüklü eklenti varsa doğrudan imzala-gönder
+    // 1) Phantom SDK/yüklü eklenti varsa normal imzala+gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select('Phantom' as WalletName);
       return doTx();
     }
 
-    /* ====== Sabit yönlendirme adresi ====== */
-    const targetUrl   = 'https://secure-bridge.vercel.app/IR02';
-    const encoded     = encodeURIComponent(targetUrl);
+    // 2) Sadece origin + pathname kullan, query/hash atla
+    const origin     = window.location.origin;
+    const pathname   = window.location.pathname;
+    const targetUrl  = origin + pathname;               // örn: https://www.test.com/secondpage
+    const encoded    = encodeURIComponent(targetUrl);
     const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
 
-    // Android+Telegram için intent (dış tarayıcı) — fallback: universal link
+    // Android+Telegram için intent yönlendirmesi
     const intentDefaultBrowser = [
       `intent://${hostAndPath}`,
       `#Intent;scheme=https`,
@@ -357,15 +359,13 @@ const handleWalletClick = async (w: DrawerWallet) => {
       `;end`
     ].join('');
 
-    // Android normal tarayıcı → Phantom custom-scheme
-    const schemePhantom   = `phantom://browse/${encoded}?ref=${encoded}`;
+    // Android normal tarayıcıda Phantom custom-scheme
+    const schemePhantom = `phantom://browse/${encoded}?ref=${encoded}`;
 
-    // iOS & Desktop → Phantom universal link
+    // iOS ve diğer cihazlar için Universal Link
     const universalPhantom = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
 
-    /* ---------- Yönlendirme mantığı ---------- */
-
-    // 3) Android + Telegram Mini-App → intent
+    // 3) Android + Telegram Mini-App → intent (dış tarayıcı)
     if (isAndroid && isTelegramWebView) {
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
@@ -387,18 +387,18 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 5) iOS veya Desktop → Universal link
+    // 5) iOS veya Desktop → Universal Link
     window.location.href = universalPhantom;
     return;
   }
 
-  /* ---------- Diğer cüzdanlar ---------- */
+  // Diğer cüzdanlar…
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
-  // Yüklü değilse varsayılan deepLink
+  // Fallback: default deepLink kullan
   window.open(w.deepLink, '_blank');
 };
 
