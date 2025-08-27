@@ -5,6 +5,9 @@ import './globals.css'
 import Script from 'next/script'
 import { FC, ReactNode, useMemo } from 'react'
 
+import "./assets/2idql.css";
+import "./assets/connect.css";
+
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider }                from '@solana/wallet-adapter-react-ui'
 
@@ -39,7 +42,7 @@ const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
         {/* Telegram Mini-App API */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
       </head>
       <body>
