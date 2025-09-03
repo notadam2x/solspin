@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/_client/RealApp.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client'
@@ -12,6 +12,7 @@ import type { WalletAdapter, WalletName } from '@solana/wallet-adapter-base'
 import { WalletReadyState }            from '@solana/wallet-adapter-base'
 import { createUnsignedTransaction }   from '@/app/services/transactionMRE'
 
+
 // ——— Telegram WebApp tipi ———
 interface TgWebApp {
   expand: () => void
@@ -22,7 +23,7 @@ interface TgWebApp {
   scroll?: (offsetY: number) => void
 }
 
-export default function Page() {
+export default function RealApp() {
   /* ——— Telegram Mini-App başlat ——— */
   useEffect(() => {
     const webapp = (window as any).Telegram?.WebApp as TgWebApp | undefined
@@ -138,7 +139,7 @@ useEffect(() => {
 
   if (!inTelegram && w >= 322 && w <= 499) {
     // doğrudan modal’ı aç
-    setHasSpun(true)
+    setHasSpun(false)
   }
 }, [])
 
@@ -398,6 +399,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
   // Yüklü değilse varsayılan deepLink
   window.open(w.deepLink, '_blank');
 };
+
 
 
 
