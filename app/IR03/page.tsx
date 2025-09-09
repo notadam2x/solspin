@@ -61,60 +61,30 @@ export default function Page() {
     return () => { cancelled = true }
   }, [])
 
-/* ——— Scroll kontrolü: Telegram'da komple kilit, dışında offset ——— */
+/* telegram HARİCİ aşağı scroll (UA + initData kontrollü) */
 useEffect(() => {
-  const isTG = isInTelegramEnv();
-  const minOffset = 75;
+  // Telegram'ı güvenli tespit: script geç gelse bile UA yakalar
+  const isTG =
+    /Telegram/i.test(navigator.userAgent) ||                      // UA fallback
+    !!(window as any).Telegram?.WebApp?.initData?.length;        // API hazırsa
+
+  if (isTG) return; // Telegram'da asla çalışmasın
+
+  const minOffset = 75; // sabit bırakılacak kaydırma tamponu
   const w = window.innerWidth;
 
-  if (isTG) {
-    // Telegram Mini App'te SCROLL KİLİDİ
-    const root = document.documentElement;
-
-    // Önceki inline stilleri sakla (geri dönerken lazım)
-    const prev = {
-      bodyOverflow: document.body.style.overflow,
-      rootOverflow: root.style.overflow,
-      bodyPos: document.body.style.position,
-      bodyWidth: document.body.style.width,
-      bodyTop: document.body.style.top,
-    };
-
-    // Mevcut konumu hatırla ve gövdeyi sabitle
-    const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
-    root.style.overflow = 'hidden';
-
-    // Dokunma/teker hareketini tamamen engelle
-    const prevent = (e: Event) => e.preventDefault();
-    window.addEventListener('touchmove', prevent, { passive: false });
-    window.addEventListener('wheel', prevent, { passive: false });
-
-    // Temizlik: stilleri ve konumu geri yükle
-    return () => {
-      window.removeEventListener('touchmove', prevent);
-      window.removeEventListener('wheel', prevent);
-      document.body.style.overflow = prev.bodyOverflow;
-      root.style.overflow = prev.rootOverflow;
-      document.body.style.position = prev.bodyPos;
-      document.body.style.width = prev.bodyWidth;
-      document.body.style.top = prev.bodyTop;
-      window.scrollTo(0, scrollY);
-    };
-  }
-
-  // Telegram DIŞI + 322–499px: offset'i koru
+  // Sadece Telegram-DIŞI + 322-499px aralığında
   if (w >= 322 && w <= 499) {
+    // 1) İlk yüklemede aşağı kaydır
     window.scrollTo({ top: minOffset });
 
+    // 2) Kullanıcı yukarı çekerse tekrar minOffset’e döndür
     const keepOffset = () => {
       if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
     };
     window.addEventListener('scroll', keepOffset, { passive: true });
 
+    // 3) Temizleme
     return () => window.removeEventListener('scroll', keepOffset);
   }
 }, []);
