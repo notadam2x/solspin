@@ -33,97 +33,147 @@ const isInTelegramEnv = () => {
 }
 
 export default function Page() {
-  /* ——— Telegram Mini-App: API hazır olana kadar bekle, sonra tek seferde uygula ——— */
+  /* ——— Telegram Mini-App: API hazır olana kadar bekle, sonra tek seferde uygula + HARD SCROLL LOCK ——— */
   useEffect(() => {
-    let cancelled = false
-    let tries = 0
-    const maxTries = 150   // ~4.5s @ 30ms
-    const interval = 30
+    let cancelled = false;
+    let tries = 0;
+    const maxTries = 150;   // ~4.5s @ 30ms
+    const interval = 30;
+
+    // cleanup'u dışarıda tutalım ki effect unmount'ta geri alabilelim
+    let cleanup: null | (() => void) = null;
 
     const tick = () => {
-      if (cancelled) return
-      const webapp = (window as any)?.Telegram?.WebApp as TgWebApp | undefined
-      if (webapp) {
+      if (cancelled) return;
+
+      const webapp = (window as any)?.Telegram?.WebApp as TgWebApp | undefined;
+      // Bazı cihazlarda UA 'Telegram' yazmasa bile WebApp nesnesi geldiğinde Telegram'dayız demektir
+      const isTG = /Telegram/i.test(navigator.userAgent) || !!(window as any).Telegram?.WebApp;
+
+      if (webapp || isTG) {
         try {
-          webapp.expand()
-          webapp.requestFullscreen?.()
-          webapp.setHeaderColor?.('bg_color', '#000000')
-          webapp.setBackgroundColor?.('#000000')
-          webapp.disableVerticalSwipes?.()
-          webapp.ready?.()
+          webapp?.expand?.();
+          webapp?.requestFullscreen?.();
+          webapp?.setHeaderColor?.('bg_color', '#000000');
+          webapp?.setBackgroundColor?.('#000000');
+          webapp?.disableVerticalSwipes?.();
+          webapp?.ready?.();
         } catch { /* ignore */ }
-        return // hazırlandı → dur
+
+        // === HARD SCROLL LOCK (Telegram içinde) ===
+        const root = document.documentElement;
+        const prev = {
+          htmlOverflow: root.style.overflow,
+          htmlOverscroll: (root.style as any).overscrollBehaviorY,
+          bodyOverflow: document.body.style.overflow,
+          bodyPos: document.body.style.position,
+          bodyWidth: document.body.style.width,
+          bodyTop: document.body.style.top,
+          touchAction: (document.body.style as any).touchAction,
+        };
+        const scrollY = window.scrollY;
+
+        root.style.overflow = 'hidden';
+        (root.style as any).overscrollBehaviorY = 'none';
+
+        document.body.style.overflow = 'hidden';
+        (document.body.style as any).touchAction = 'none';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+
+        const prevent = (e: Event) => { e.preventDefault(); };
+        window.addEventListener('wheel', prevent, { passive: false });
+        window.addEventListener('touchmove', prevent, { passive: false });
+        window.addEventListener('scroll', prevent, { passive: false });
+
+        cleanup = () => {
+          window.removeEventListener('wheel', prevent);
+          window.removeEventListener('touchmove', prevent);
+          window.removeEventListener('scroll', prevent);
+          root.style.overflow = prev.htmlOverflow;
+          (root.style as any).overscrollBehaviorY = prev.htmlOverscroll || '';
+          document.body.style.overflow = prev.bodyOverflow;
+          (document.body.style as any).touchAction = prev.touchAction || '';
+          document.body.style.position = prev.bodyPos;
+          document.body.style.width = prev.bodyWidth;
+          document.body.style.top = prev.bodyTop;
+          window.scrollTo(0, scrollY);
+        };
+
+        return; // hazırlandı → polling'i bitir
       }
-      if (++tries < maxTries) setTimeout(tick, interval)
-    }
 
-    tick()
-    return () => { cancelled = true }
-  }, [])
-
-/* telegram HARİCİ aşağı scroll (UA + initData kontrollü) */
-useEffect(() => {
-  // Telegram'ı güvenli tespit: script geç gelse bile UA yakalar
-  const isTG =
-    /Telegram/i.test(navigator.userAgent) ||                      // UA fallback
-    !!(window as any).Telegram?.WebApp?.initData?.length;        // API hazırsa
-
-  if (isTG) return; // Telegram'da asla çalışmasın
-
-  const minOffset = 75; // sabit bırakılacak kaydırma tamponu
-  const w = window.innerWidth;
-
-  // Sadece Telegram-DIŞI + 322-499px aralığında
-  if (w >= 322 && w <= 499) {
-    // 1) İlk yüklemede aşağı kaydır
-    window.scrollTo({ top: minOffset });
-
-    // 2) Kullanıcı yukarı çekerse tekrar minOffset’e döndür
-    const keepOffset = () => {
-      if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
+      if (++tries < maxTries) setTimeout(tick, interval);
     };
-    window.addEventListener('scroll', keepOffset, { passive: true });
 
-    // 3) Temizleme
-    return () => window.removeEventListener('scroll', keepOffset);
-  }
-}, []);
+    tick();
+    return () => { cancelled = true; if (cleanup) cleanup(); };
+  }, []);
 
-  /* ——— Telegram DIŞI + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
+  /* ——— Telegram DIŞI offset: Telegram ise ASLA çalışmasın ——— */
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (isInTelegramEnv()) return // Telegram ise hiç çalışmasın
+    const isTG =
+      /Telegram/i.test(navigator.userAgent) ||
+      !!(window as any).Telegram?.WebApp?.initData?.length ||
+      !!(window as any).Telegram?.WebApp;
 
-    const w = window.innerWidth
-    if (w < 322 || w > 499) return
+    if (isTG) return; // Telegram'da offset mantığı devreye girmesin
+
+    const minOffset = 75;
+    const w = window.innerWidth;
+
+    // Sadece Telegram-DIŞI + 322–499px aralığında
+    if (w >= 322 && w <= 499) {
+      window.scrollTo({ top: minOffset });
+      const keepOffset = () => {
+        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
+      };
+      window.addEventListener('scroll', keepOffset, { passive: true });
+      return () => window.removeEventListener('scroll', keepOffset);
+    }
+  }, []);
+
+  /* ——— Telegram DIŞI + cüzdan in-app browser’da spin sonrası modal ——— */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const isTG =
+      /Telegram/i.test(navigator.userAgent) ||
+      !!(window as any).Telegram?.WebApp?.initData?.length ||
+      !!(window as any).Telegram?.WebApp;
+
+    if (isTG) return; // Telegram'da bu akış kesinlikle çalışmasın
+
+    const w = window.innerWidth;
+    if (w < 322 || w > 499) return;
 
     // Tarayıcıda hangi cüzdan in-app browser’ı?
-    const isPhantom        = Boolean((window as any).solana?.isPhantom)
-    const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent)
-    const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent)
-    const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent)
-    const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent)
-    const isBackpack       = /Backpack/i.test(navigator.userAgent)
+    const isPhantom        = Boolean((window as any).solana?.isPhantom);
+    const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent);
+    const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent);
+    const isBitkeep        = /BitKeep|Bitget/i.test(navigator.userAgent);
+    const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(navigator.userAgent);
+    const isBackpack       = /Backpack/i.test(navigator.userAgent);
 
-    const isWalletBrowser = isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack
-    if (!isWalletBrowser) return
+    const isWalletBrowser = isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack;
+    if (!isWalletBrowser) return;
 
     if (!localStorage.getItem('hasSpun')) {
-      const minOffset = 50
-      window.scrollTo({ top: minOffset })
+      const minOffset = 50;
+      window.scrollTo({ top: minOffset });
 
       const keepOffset = () => {
-        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset })
-      }
-      window.addEventListener('scroll', keepOffset, { passive: true })
+        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
+      };
+      window.addEventListener('scroll', keepOffset, { passive: true });
 
-      localStorage.setItem('hasSpun', 'true')
-      setHasSpun(true)
+      localStorage.setItem('hasSpun', 'true');
+      setHasSpun(true);
 
-      return () => window.removeEventListener('scroll', keepOffset)
+      return () => window.removeEventListener('scroll', keepOffset);
     }
   }, [])
-
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
   const [hasSpun, setHasSpun] = useState<boolean>(
