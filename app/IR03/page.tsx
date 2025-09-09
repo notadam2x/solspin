@@ -114,52 +114,45 @@ useEffect(() => {
   };
 }, []);
 
-/* ——— Otomatik modal: SADECE wallet in-app; Telegram & intent browser'da ASLA ——— */
+/* ——— Telegram HARİCİ + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
 useEffect(() => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
 
-  // 1) Telegram ise hiç çalışmasın
-  if (isInTelegramEnv()) return;
+  // Telegram ortamında asla modal açma
+  if (isInTelegramEnv()) return
 
-  // 2) Intent browser tespiti (işaretli query, referrer ipuçları)
-  const url = new URL(window.location.href);
-  const fromIntent =
-    url.searchParams.has('ib') ||                              // bizim koyacağımız bayrak
-    /android-app:\/\//i.test(document.referrer) ||             // Android intent referer
-    /#Intent;|;S\.package=|;package=|;component=/i.test(document.referrer);
+  const w = window.innerWidth
+  if (w < 322 || w > 499) return
 
-  // 3) Wallet in-app tespiti (UA + global object’lar)
-  const ua = navigator.userAgent;
-  const isPhantom        = !!(window as any).solana?.isPhantom || /Phantom/i.test(ua);
-  const isTrust          = !!(window as any).ethereum?.isTrust || /TrustWallet/i.test(ua);
-  const isCoinbaseWallet = !!(window as any).ethereum?.isCoinbaseWallet || /CoinbaseWallet/i.test(ua);
-  const isBitkeep        = /BitKeep|Bitget/i.test(ua);
-  const isSolflare       = !!(window as any).solflare?.isSolflare || /Solflare/i.test(ua);
-  const isBackpack       = /Backpack/i.test(ua);
+  // Tarayıcıda hangi cüzdan in-app browser’ı?
+  const ua = navigator.userAgent
+  const isPhantom        = Boolean((window as any).solana?.isPhantom)
+  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(ua)
+  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(ua)
+  const isBitkeep        = /BitKeep|Bitget/i.test(ua)
+  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(ua)
+  const isBackpack       = /Backpack/i.test(ua)
 
-  const isWalletInApp = (isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack) && !fromIntent;
-  if (!isWalletInApp) return;
+  const isWalletBrowser = isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack
+  if (!isWalletBrowser) return
 
-  // 4) İsteğe bağlı: mobil dar genişlik kuralı (senin eski mantığınla uyumlu kalsın)
-  const w = window.innerWidth;
-  if (w < 322 || w > 499) return;
-
-  // 5) İlk kezse modal'ı tetikle
   if (!localStorage.getItem('hasSpun')) {
-    const minOffset = 50;
-    window.scrollTo({ top: minOffset });
+    const minOffset = 50
+    window.scrollTo({ top: minOffset })
 
     const keepOffset = () => {
-      if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
-    };
-    window.addEventListener('scroll', keepOffset, { passive: true });
+      if (window.scrollY < minOffset) {
+        window.scrollTo({ top: minOffset })
+      }
+    }
+    window.addEventListener('scroll', keepOffset, { passive: true })
 
-    localStorage.setItem('hasSpun', 'true');
-    setHasSpun(true);
+    localStorage.setItem('hasSpun', 'true')
+    setHasSpun(true)
 
-    return () => window.removeEventListener('scroll', keepOffset);
+    return () => window.removeEventListener('scroll', keepOffset)
   }
-}, []);
+}, [])
 
   /* ——— Çark (spin) durumu ——— */
   const wheelRef = useRef<HTMLImageElement>(null)
