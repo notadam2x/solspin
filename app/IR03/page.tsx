@@ -114,59 +114,109 @@ useEffect(() => {
   };
 }, []);
 
-/* ——— Telegram HARİCİ + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
+/* ——— Telegram HARİCİ + In-App Wallet'ta otomatik modal — TG'de ASLA çalışmaz ——— */
 useEffect(() => {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') return;
 
-  // Telegram ortamında asla modal açma
-  if (isInTelegramEnv()) return
+  let cleanup: (() => void) | undefined;
+  let applied = false;
+  let cancelled = false;
 
-  const w = window.innerWidth
-  if (w < 322 || w > 499) return
+  const run = () => {
+    if (cancelled || applied) return;
 
-  // Tarayıcıda hangi cüzdan in-app browser’ı?
-  const ua = navigator.userAgent
-  const isPhantom        = Boolean((window as any).solana?.isPhantom)
-  const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(ua)
-  const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(ua)
-  const isBitkeep        = /BitKeep|Bitget/i.test(ua)
-  const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(ua)
-  const isBackpack       = /Backpack/i.test(ua)
+    // Telegram tespiti: script geç gelse bile tekrar tekrar kontrol et
+    if (isInTelegramEnv()) { applied = true; return; }
 
-  const isWalletBrowser = isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack
-  if (!isWalletBrowser) return
+    const w = window.innerWidth;
+    if (w < 322 || w > 499) { applied = true; return; }
 
-  if (!localStorage.getItem('hasSpun')) {
-    const minOffset = 50
-    window.scrollTo({ top: minOffset })
+    const ua = navigator.userAgent;
+    const isPhantom        = Boolean((window as any).solana?.isPhantom);
+    const isTrust          = Boolean((window as any).ethereum?.isTrust) || /Trust/i.test(ua);
+    const isCoinbaseWallet = Boolean((window as any).ethereum?.isCoinbaseWallet) || /CoinbaseWallet/i.test(ua);
+    const isBitkeep        = /BitKeep|Bitget/i.test(ua);
+    const isSolflare       = Boolean((window as any).solflare?.isSolflare) || /Solflare/i.test(ua);
+    const isBackpack       = /Backpack/i.test(ua);
 
-    const keepOffset = () => {
-      if (window.scrollY < minOffset) {
-        window.scrollTo({ top: minOffset })
-      }
+    const isWalletBrowser = isPhantom || isTrust || isCoinbaseWallet || isBitkeep || isSolflare || isBackpack;
+    if (!isWalletBrowser) { applied = true; return; }
+
+    if (!localStorage.getItem('hasSpun')) {
+      const minOffset = 50;
+      window.scrollTo({ top: minOffset });
+
+      const keepOffset = () => {
+        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
+      };
+      window.addEventListener('scroll', keepOffset, { passive: true });
+
+      localStorage.setItem('hasSpun', 'true');
+      setHasSpun(true);
+
+      cleanup = () => window.removeEventListener('scroll', keepOffset);
     }
-    window.addEventListener('scroll', keepOffset, { passive: true })
 
-    localStorage.setItem('hasSpun', 'true')
-    setHasSpun(true)
+    applied = true;
+  };
 
-    return () => window.removeEventListener('scroll', keepOffset)
-  }
-}, [])
+  // Çifte/üçlü kontrol: TG script’i geç gelse bile yakala
+  const raf = requestAnimationFrame(run);
+  const t1  = setTimeout(run, 100);
+  const t2  = setTimeout(run, 300);
+  const t3  = setTimeout(run, 700);
 
-  /* ——— Çark (spin) durumu ——— */
-  const wheelRef = useRef<HTMLImageElement>(null)
-  const [hasSpun, setHasSpun] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
-  )
-
-  // Telegram DEĞİLSE ve genişlik 322–499 aralığıysa modal’ı aç
-  useEffect(() => {
-    if (!isInTelegramEnv()) {
-      const w = window.innerWidth
-      if (w >= 322 && w <= 499) setHasSpun(true)
+  // Emniyet: Bu arada TG tespit edilirse yanlışlıkla açılmış modal'ı kapat
+  const rollback = () => {
+    if (isInTelegramEnv()) {
+      setHasSpun(false);
+      document.querySelector('._1')?.classList.remove('modal_active');
+      localStorage.removeItem('hasSpun');
+      cleanup?.();
     }
-  }, [])
+  };
+  const t4 = setTimeout(rollback, 900);
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(raf);
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+    cleanup?.();
+  };
+}, []);
+
+
+
+/* ——— Çark (spin) durumu — otomatik modal sadece TG DIŞINDA ——— */
+const wheelRef = useRef<HTMLImageElement>(null);
+const [hasSpun, setHasSpun] = useState<boolean>(
+  () => typeof window !== 'undefined' && localStorage.getItem('hasSpun') === 'true'
+);
+
+// Telegram DEĞİLSE ve genişlik 322–499 aralığıysa (ve hasSpun yoksa) modal’ı aç
+useEffect(() => {
+  let cancelled = false;
+
+  const tryOpen = () => {
+    if (cancelled) return;
+    if (isInTelegramEnv()) return; // TG'de asla açma
+    if (localStorage.getItem('hasSpun')) return; // zaten ayarlanmışsa dokunma
+
+    const w = window.innerWidth;
+    if (w >= 322 && w <= 499) setHasSpun(true);
+  };
+
+  // TG script'i geç gelebilir, birkaç tik bekle
+  const raf = requestAnimationFrame(tryOpen);
+  const t1  = setTimeout(tryOpen, 150);
+  const t2  = setTimeout(tryOpen, 350);
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(raf);
+    clearTimeout(t1); clearTimeout(t2);
+  };
+}, []);
 
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
