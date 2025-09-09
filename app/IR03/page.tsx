@@ -77,23 +77,42 @@ export default function Page() {
     return () => { cancelled = true }
   }, [])
 
-  /* ——— telegram HARİCİ aşağı scroll — Telegram ise asla çalışmasın ——— */
-  useEffect(() => {
-    if (isInTelegramEnv()) return
+/* ——— telegram HARİCİ aşağı scroll — Telegram'da asla çalışmasın (gecikmeli karar) ——— */
+useEffect(() => {
+  let cleanup: (() => void) | null = null;
+  let done = false;
 
-    const minOffset = 75
-    const w = window.innerWidth
+  const apply = () => {
+    if (done) return;
+    if (isInTelegramEnv()) { done = true; return; } // TG ise hiçbir şey yapma
 
-    // Sadece Telegram-DIŞI + 322-499px aralığında
+    const minOffset = 75;
+    const w = window.innerWidth;
+
     if (w >= 322 && w <= 499) {
-      window.scrollTo({ top: minOffset })
+      window.scrollTo({ top: minOffset });
+
       const keepOffset = () => {
-        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset })
-      }
-      window.addEventListener('scroll', keepOffset, { passive: true })
-      return () => window.removeEventListener('scroll', keepOffset)
+        if (window.scrollY < minOffset) window.scrollTo({ top: minOffset });
+      };
+      window.addEventListener('scroll', keepOffset, { passive: true });
+
+      cleanup = () => window.removeEventListener('scroll', keepOffset);
     }
-  }, [])
+
+    done = true;
+  };
+
+  // TG tespitinin “yarış”a düşmemesi için bir kaç tick geciktir
+  const raf = requestAnimationFrame(apply);
+  const t   = setTimeout(apply, 300); // 300ms sonra da bir kez daha kontrol
+
+  return () => {
+    cancelAnimationFrame(raf);
+    clearTimeout(t);
+    cleanup?.();
+  };
+}, []);
 
   /* ——— Telegram DIŞI + In-App Wallet tarayıcıda spin’dan sonra modal aç ——— */
   useEffect(() => {
