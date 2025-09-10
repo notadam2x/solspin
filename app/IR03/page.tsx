@@ -49,33 +49,38 @@ const isInTelegramEnv = () => {
 };
 
 export default function Page() {
-  /* ——— Telegram Mini-App: API hazır olana kadar bekle, sonra tek seferde uygula ——— */
-  useEffect(() => {
-    let cancelled = false
-    let tries = 0
-    const maxTries = 150   // ~4.5s @ 30ms
-    const interval = 30
+/* ——— Telegram bootstrap: ready + expand (tekrar) + viewport stabilize olduğunda swipe kilidi ——— */
+useEffect(() => {
+  const tg: any = (window as any).Telegram?.WebApp;
+  if (!tg) return;
 
-    const tick = () => {
-      if (cancelled) return
-      const webapp = (window as any)?.Telegram?.WebApp as TgWebApp | undefined
-      if (webapp) {
-        try {
-          webapp.expand()
-          webapp.requestFullscreen?.()
-          webapp.setHeaderColor?.('bg_color', '#000000')
-          webapp.setBackgroundColor?.('#000000')
-          webapp.disableVerticalSwipes?.()
-          webapp.ready?.()
-        } catch { /* ignore */ }
-        return // hazırlandı → dur
-      }
-      if (++tries < maxTries) setTimeout(tick, interval)
+  try {
+    tg.ready();
+    tg.setHeaderColor?.('bg_color', '#000000');
+    tg.setBackgroundColor?.('#000000');
+  } catch {}
+
+  const tryExpand = () => { try { if (!tg.isExpanded) tg.expand(); } catch {} };
+  tryExpand();
+  const t1 = setTimeout(tryExpand, 120);
+  const t2 = setTimeout(tryExpand, 320);
+  const t3 = setTimeout(tryExpand, 700);
+
+  const onViewportChanged = (e: any) => {
+    tryExpand();
+    if (e?.isStateStable) {
+      try { tg.disableVerticalSwipes?.(); } catch {}
+      // İstersen burada body kilidi de ekleyebilirsin (çoğu zaman gerekmez)
     }
+  };
 
-    tick()
-    return () => { cancelled = true }
-  }, [])
+  tg.onEvent?.('viewportChanged', onViewportChanged);
+
+  return () => {
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    tg.offEvent?.('viewportChanged', onViewportChanged);
+  };
+}, []);
 
 /* ——— telegram HARİCİ aşağı scroll — Telegram'da asla çalışmasın (gecikmeli karar) ——— */
 useEffect(() => {
