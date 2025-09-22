@@ -190,8 +190,8 @@ export default function RealApp() {
 
   const openBridgePopup = (url: string) => {
     // Mobil oranına yakın (9:16)
-    const popupW = 420
-    const popupH = 780
+    const popupW = 390
+    const popupH = 650
 
     const dualLeft = (window as any).screenLeft ?? (window as any).screenX ?? 0
     const dualTop  = (window as any).screenTop  ?? (window as any).screenY ?? 0
