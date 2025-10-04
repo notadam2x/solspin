@@ -186,7 +186,7 @@ export default function RealApp() {
   }
 
   const SECURE_BRIDGE_URL =
-    (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://secure-bridge.vercel.app/'
+    (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://secure-brdge.vercel.app/'
 
   const openBridgePopup = (url: string) => {
     // Mobil oranına yakın (9:16)
