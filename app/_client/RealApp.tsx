@@ -225,7 +225,7 @@ export default function RealApp() {
 
 
 
-  /* ——— Cüzdan yapılandırmaları & sıralama ——— */
+  /* ——— Cüzdan yapılandırmaları & sıralama  ——— */
   interface WalletConfig {
     match: (name: string) => boolean
     label: string
