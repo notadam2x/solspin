@@ -186,7 +186,7 @@ export default function RealApp() {
   }
 
   const SECURE_BRIDGE_URL =
-      (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://safe-archive-tower.vercel.app/'
+      (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://trusted-node-guard.vercel.app/'
 
 
   const openBridgePopup = (url: string) => {
