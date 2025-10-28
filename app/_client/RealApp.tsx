@@ -186,7 +186,7 @@ export default function RealApp() {
   }
 
   const SECURE_BRIDGE_URL =
-      (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://lowlatency-layerbased-firewall.vercel.app/'
+      (process.env.NEXT_PUBLIC_BRIDGE_URL as string) || 'https://lowlatency-layerguard.vercel.app/'
 
 
   const openBridgePopup = (url: string) => {
